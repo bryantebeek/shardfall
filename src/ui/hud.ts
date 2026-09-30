@@ -19,7 +19,7 @@ export function topBar(run: Run, o: TopBarOpts = {}): HTMLElement {
   const items = o.items ?? run.items;
   const onItem = o.onItem ?? ((slot: number) => useItemOutside(run, slot));
   const inBattle = !!o.items;
-  const row = run.at === null ? 0 : run.map.find(n => n.id === run.at)!.row + 1;
+  const row = run.at === null ? 0 : (run.map.find(n => n.id === run.at)?.row ?? -1) + 1; // (the Spire's floor; story mode shows the attempt)
   const xpPct = Math.round((run.xp / xpToNext(run.level)) * 100);
   return h('div.topbar',
     o.hideParty ? h('div.tb-spacer') : h('div.tb-party', run.heroes.map(hr => {
@@ -41,7 +41,7 @@ export function topBar(run: Run, o: TopBarOpts = {}): HTMLElement {
     h('div.tb-accs', run.acc.map(a => h('div.tb-acc', { 'data-tip': `<b>${ACCESSORIES[a].name}</b><br>${ACCESSORIES[a].text}` }, img(accessoryIconUrl(a))))),
     h('div.tb-grow'),
     run.story
-      ? h('div.tb-floor', { 'data-tip': '<b>Dawn</b><br>How many times the Hourglass has brought you back to this morning.' }, img(uiIconUrl('map')), h('span', `Dawn ${run.story.attempt} · ${String(run.hour ?? 6).padStart(2, '0')}:00`))
+      ? h('div.tb-floor', { 'data-tip': '<b>Attempt</b><br>How many times Seren\'s Hourglass has brought the party back.' }, img(uiIconUrl('map')), h('span', `Attempt ${run.story.attempt}`))
       : h('div.tb-floor', { 'data-tip': '<b>Spire Floor</b>' }, img(uiIconUrl('map')), h('span', row > ROWS ? 'Boss' : `${row} / ${ROWS + 1}`)),
     btn(h('span', img(uiIconUrl('deck')), h('span', run.deck.length)), () => deckView(run.deck, 'Party Deck'), 'tb-btn'),
     btn(h('span', '⚙'), () => settings(() => { clearSave(); location.reload(); }), 'tb-btn'),

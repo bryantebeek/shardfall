@@ -9,7 +9,7 @@ import { Rng } from './rng';
 import { HERO_IDS, type CardInst, type HeroId, type Rarity } from './types';
 
 export type NodeType = 'battle' | 'elite' | 'event' | 'inn' | 'shop' | 'treasure' | 'boss';
-export interface MapNode { id: number; row: number; col: number; type: NodeType; next: number[]; label?: string; event?: string }
+export interface MapNode { id: number; row: number; col: number; type: NodeType; next: number[] }
 export interface RunHero { id: HeroId; hp: number; maxHp: number }
 
 export interface RunStats { floors: number; kills: number; damage: number; breaks: number; cardsPlayed: number; elites: number; maxHit: number; startedAt: number }
@@ -36,8 +36,6 @@ export interface Run {
   /** story mode: the chapter's progress across attempts, and what's been done this attempt */
   story?: Story;
   flags?: Flag[];
-  /** story mode: the hour of the day (dawn is 6, dusk is 18) */
-  hour?: number;
 }
 
 export const ROWS = 15; // + boss row
@@ -116,7 +114,7 @@ export function reachable(run: Run): number[] {
   return nodeById(run, run.at).next;
 }
 
-export function currentRow(run: Run): number { return run.at === null ? -1 : nodeById(run, run.at).row; }
+export function currentRow(run: Run): number { return run.at === null ? -1 : run.map.find(n => n.id === run.at)?.row ?? -1; } // (story runs have no ladder map)
 
 export function enterNode(run: Run, id: number): MapNode {
   run.at = id;
@@ -128,7 +126,6 @@ export function enterNode(run: Run, id: number): MapNode {
 
 export function theme(run: Run): 'ruins' | 'depths' | 'boss' | 'dusk' {
   const row = currentRow(run);
-  if (run.story) return (run.hour ?? 6) >= 15 ? 'dusk' : 'ruins'; // the light goes as the day does
   return row >= ROWS ? 'boss' : row >= 8 ? 'depths' : 'ruins';
 }
 

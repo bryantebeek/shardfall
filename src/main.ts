@@ -8,16 +8,18 @@ import '@fontsource/cormorant-garamond/700.css';
 import './style.css';
 import { audio } from './audio/audio';
 import {
-  ARRIVAL, DAWN, DAWN_AFTER, DUSK, EMBERFALL_EVENTS, ENDING, PROLOGUE, REWIND, beginAttempt, emberfallEnemies, hillScene, knightSetup, newStory, rewind, spendHours, stepsRun,
+  ARRIVAL, DAWN, DAWN_AFTER, DUSK, EMBERFALL_EVENTS, ENDING, PROLOGUE, REWIND, START, beginAttempt, here, hillScene, knightSetup, newStory, placeEnemies,
+  rewind, roadEnemies, stepsRun, storyTheme, travel,
 } from './game/chapter1';
-import { clearSave, enterNode, load, newCard, save, theme, type NodeType, type Run } from './game/run';
+import { clearSave, load, newCard, save, type NodeType, type Run } from './game/run';
 import type { AccId, ItemId } from './game/loot';
 import { createStage } from './render/stage';
 import { app } from './ui/app';
 import { battleScreen } from './ui/battle';
 import { initTooltips } from './ui/dom';
 import { initGamepad } from './ui/gamepad';
-import { endScreen, eventScreen, innScreen, levelUpScreen, mapScreen, rewardsScreen, shopScreen, titleScreen, treasureScreen } from './ui/screens';
+import { endScreen, eventScreen, innScreen, levelUpScreen, rewardsScreen, shopScreen, titleScreen, treasureScreen } from './ui/screens';
+import { placeMapScreen } from './ui/placemap';
 import { chapterCard, chapterComplete, memoryCard, scene } from './ui/story';
 
 const frame = document.getElementById('frame')!;
@@ -64,51 +66,62 @@ async function openChapter(): Promise<Run> {
   await scene(DUSK);
   // the shrine steps: three strokes
   await battleScreen(stepsRun(), 'boss', ['ashsteps'], { theme: 'dusk' });
-  const { run, memory } = rewind(beginAttempt(newStory()));
+  const { run, memory } = rewind(beginAttempt(newStory()), START, START); // he falls on the shrine steps
   await scene(DAWN);
   await memoryCard(memory!);
   await scene(DAWN_AFTER);
   return run;
 }
 
-/** The party fell: Seren takes everyone back to dawn, and they remember one more thing. */
-async function fall(run: Run): Promise<Run> {
-  const next = rewind(run);
+/** A new journey that starts on the map: the first night has happened, and they remember the Knight's guard. */
+function skipIntro(): Run {
+  return rewind(beginAttempt(newStory()), START, START).run;
+}
+
+/** The party fell (on the road from `from`, or at the place they reached): back to dawn, remembering one more thing. */
+async function fall(run: Run, from: number): Promise<Run> {
+  const next = rewind(run, from, here(run));
   save(next.run);
   await scene(REWIND);
   if (next.memory) await memoryCard(next.memory);
   return next.run;
 }
 
+/** a fight during the escape; false if the party falls */
+function fight(run: Run, type: NodeType, enemies: string[]) {
+  return battleScreen(run, type, enemies, { setup: knightSetup(run), theme: storyTheme(run) });
+}
+
 /** The escape from Emberfall, one attempt after another, until they reach the hill. */
 async function playChapter(run: Run) {
   for (;;) {
     save(run);
-    const id = await mapScreen(run, theme(run));
-    const node = enterNode(run, id);
-    spendHours(run, node);
-    switch (node.type) {
-      case 'battle': case 'elite': case 'boss': {
-        if (node.type === 'boss') {
-          await scene(hillScene(run));
-          if (!run.story!.seen.includes('hill')) run.story!.seen.push('hill');
-        }
-        const won = await battleScreen(run, node.type, emberfallEnemies(run, node), { setup: knightSetup(run) });
-        if (!won) { run = await fall(run); break; }
-        if (node.type === 'boss') {
-          await scene(ENDING);
-          clearSave();
-          await chapterComplete(run.story!);
-          return;
-        }
-        if (node.type === 'elite') run.stats.elites++;
-        await rewardsScreen(run, node.type);
+    const from = here(run);
+    const step = travel(run, await placeMapScreen(run));
+    // the road first: an ambush, the first time it's walked
+    if (step.ambush) {
+      if (!(await fight(run, 'battle', roadEnemies(run, step.road)))) { run = await fall(run, from); continue; }
+      await rewardsScreen(run, 'battle');
+    }
+    if (!step.arrive) continue; // back from a side trip
+    const place = step.place;
+    switch (place.kind) {
+      case 'elite':
+        if (!(await fight(run, 'elite', placeEnemies(run, place)))) { run = await fall(run, place.id); continue; }
+        run.stats.elites++;
+        await rewardsScreen(run, 'elite');
         break;
-      }
-      case 'event': await eventScreen(run, EMBERFALL_EVENTS[node.event!]); break;
+      case 'boss':
+        await scene(hillScene(run));
+        if (!run.story!.seen.includes('hill')) run.story!.seen.push('hill');
+        if (!(await fight(run, 'boss', placeEnemies(run, place)))) { run = await fall(run, place.id); continue; }
+        await scene(ENDING);
+        clearSave();
+        await chapterComplete(run.story!);
+        return;
+      case 'event': await eventScreen(run, EMBERFALL_EVENTS[place.event!]); break;
       case 'inn': await innScreen(run); break;
       case 'shop': await shopScreen(run); break;
-      case 'treasure': await treasureScreen(run); break;
     }
   }
 }
@@ -126,8 +139,6 @@ async function devEntry(dev: string, q: URLSearchParams) {
   for (const id of (q.get('cards') ?? '').split(',').filter(Boolean)) run.deck.push(newCard(run, id));
   for (const a of (q.get('acc') ?? '').split(',').filter(Boolean)) run.acc.push(a as AccId);
   if (q.get('items')) run.items = q.get('items')!.split(',').map(i => (i || null) as ItemId | null);
-  const node = run.map.find(n => n.row === Number(q.get('row') ?? 1))!;
-  enterNode(run, node.id);
   switch (dev) {
     case 'map': break;
     case 'ending': await scene(hillScene(run)); await scene(ENDING); await chapterComplete(run.story!); return;
@@ -148,9 +159,9 @@ async function main() {
   if (q.get('dev')) return devEntry(q.get('dev')!, q);
   // Tap-to-start gate so the first screen can have music.
   for (;;) {
-    const last = load(), saved = last?.story ? last : null; // older Spire runs can't be continued in story mode
+    const last = load(), saved = last?.story?.known ? last : null; // older runs (the Spire, the old map) can't be continued
     const choice = await titleScreen(!!saved);
-    await playChapter(choice === 'continue' && saved ? saved : await openChapter());
+    await playChapter(choice === 'continue' && saved ? saved : choice === 'skip' ? skipIntro() : await openChapter());
   }
 }
 

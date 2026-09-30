@@ -611,21 +611,9 @@ button { font: inherit; color: inherit; }
 .map-memory.none { color: var(--muted); text-align: center; }
 .map-dawn { margin-top: 12px; text-align: center; font-family: var(--title); font-size: 16px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); }
 
-/* story map: named places, and the day running out */
+/* story map: named places */
 .map-node-label { position: absolute; top: 66px; left: 50%; transform: translateX(-50%); width: 130px; text-align: center; font-family: var(--title); font-size: 15px; line-height: 1.1; color: #f3e9d2; text-shadow: 0 2px 3px #000, 0 0 6px #000; pointer-events: none; }
 .map-node:not(.avail):not(.visited) .map-node-label { color: var(--muted); }
-.map-node-cost { position: absolute; top: -8px; right: -12px; padding: 1px 7px; border-radius: 10px; background: #1a1428; box-shadow: 0 0 0 1px var(--gold-dim); font-family: var(--title); font-size: 13px; color: #ffd98a; pointer-events: none; }
-.map-node.visited .map-node-cost { display: none; }
-.map-clock { position: absolute; right: 90px; top: 160px; width: 360px; padding: 20px 26px; background: rgba(8, 9, 20, 0.75); border-radius: 8px; box-shadow: inset 0 0 0 1px var(--gold-dim); }
-.clock-time { text-align: center; font-family: 'Cinzel Decorative', var(--title); font-size: 56px; line-height: 1; color: #fff1c4; text-shadow: 0 0 18px rgba(255, 200, 110, 0.5); margin: 4px 0 14px; }
-.map-clock.soon .clock-time { color: #ffb070; }
-.map-clock.late .clock-time { color: #ff7a6a; text-shadow: 0 0 18px rgba(255, 80, 60, 0.5); }
-.clock-track { position: relative; height: 12px; border-radius: 6px; background: linear-gradient(90deg, #6fa0d8, #f2d98a 45%, #ff9a4a 80%, #6a2a5a); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6); }
-.clock-fill { position: absolute; inset: 0 auto 0 0; border-radius: 6px 0 0 6px; background: rgba(0, 0, 0, 0.45); }
-.clock-sun { position: absolute; top: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, #fffbe0, #ffc84a 60%, #ff8a2a); box-shadow: 0 0 14px #ffc84a, 0 0 0 2px #1a1428; }
-.clock-ticks { display: flex; justify-content: space-between; margin-top: 8px; font-family: var(--title); font-size: 13px; color: var(--muted); }
-.clock-note { margin: 12px 0 6px; font-size: 21px; font-style: italic; text-align: center; color: var(--text); }
-.clock-costs { font-size: 16px; text-align: center; color: var(--muted); }
 
 /* ───────────────────────── Actions: one per hero per turn ───────────────────────── */
 .card-time { position: absolute; left: -10px; top: -10px; z-index: 2; min-width: 44px; height: 44px; padding: 0 8px; border-radius: 22px; display: flex; align-items: center; justify-content: center; gap: 5px;
@@ -636,6 +624,36 @@ button { font: inherit; color: inherit; }
 .popup.shard-tag { font-size: 28px; color: #9fe8ff; -webkit-text-stroke: 1px #06203a; margin-top: -70px; }
 .popup.shard-tag img { width: 28px; height: 28px; }
 .map-node.t-boss .map-node-label { top: 138px; width: 180px; font-size: 19px; }
+
+/* ───────────────────────── the chapter map: a place, with fog and memory ───────────────────────── */
+.pmap-frame { position: absolute; left: 540px; top: 118px; width: 1320px; height: 900px; border-radius: 12px; overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--gold-dim), 0 0 0 4px rgba(0, 0, 0, 0.5), 0 20px 60px rgba(0, 0, 0, 0.6); }
+.pmap-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pmap-layer { position: absolute; inset: 0; }
+.pm-road-case { fill: none; stroke: #1a1420; stroke-width: 13; stroke-linecap: round; opacity: 0.85; }
+.pm-road { fill: none; stroke: #9a8256; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 12 9; }
+.pm-road.walked { stroke: #ffe6a8; stroke-dasharray: none; filter: drop-shadow(0 0 4px rgba(255, 220, 140, 0.8)); }
+.pm-road.open { stroke: #ffd98a; animation: pm-march 1.2s linear infinite; }
+@keyframes pm-march { to { stroke-dashoffset: -42; } }
+.pm-ghost { fill: none; stroke: #9fe8ff; stroke-width: 3; stroke-dasharray: 3 10; stroke-linecap: round; opacity: 0.5; }
+.pm-fog { fill: #07080f; opacity: 0.93; }
+.pmap-layer .map-node.remembered { opacity: 0.7; }
+.pmap-layer .map-node.remembered .map-node-label { font-style: italic; color: #9fe8ff; }
+.pmap-layer .map-node.t-boss { width: 84px; height: 84px; }
+.pmap-layer .map-node.t-boss .map-node-label { top: 90px; width: 160px; font-size: 18px; }
+.pmap-layer.moving .map-node { pointer-events: none; }
+.pmap-ambush { position: absolute; width: 32px; height: 32px; transform: translate(-50%, -50%); border-radius: 50%; display: grid; place-items: center; background: #1c1020; box-shadow: 0 0 0 2px #c03a30, 0 0 10px rgba(220, 60, 50, 0.5); }
+.pmap-ambush img { width: 20px; height: 20px; }
+.pmap-fall { position: absolute; width: 30px; height: 30px; transform: translate(-50%, -50%) rotate(8deg); display: grid; place-items: center; filter: drop-shadow(0 0 8px #9fe8ff); opacity: 0.85; }
+.pmap-fall img { width: 26px; height: 26px; }
+.pmap-party { position: absolute; left: 0; top: 0; z-index: 5; display: flex; gap: 2px; padding: 3px 5px; border-radius: 16px; background: rgba(8, 9, 20, 0.85); box-shadow: 0 0 0 2px var(--gold), 0 4px 10px rgba(0, 0, 0, 0.6);
+  transition: transform 0.7s cubic-bezier(0.45, 0, 0.3, 1); pointer-events: none; }
+.pmap-party img { width: 28px; height: 28px; border-radius: 50%; image-rendering: pixelated; }
+.pmap-key { position: absolute; left: 90px; top: 740px; width: 380px; display: flex; flex-direction: column; gap: 8px; font-size: 19px; color: var(--muted); }
+.pmap-key > div { display: flex; align-items: center; gap: 12px; }
+.pmap-key img { width: 26px; height: 26px; }
+.pmap-key-road, .pmap-key-ghost { display: inline-block; width: 26px; height: 0; border-top: 4px solid #ffe6a8; }
+.pmap-key-ghost { border-top: 3px dotted #9fe8ff; }
 
 .act-pips { display: inline-flex; gap: 4px; margin-right: 8px; vertical-align: 1px; pointer-events: auto; }
 .act-pips.ko { display: none; }

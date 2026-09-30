@@ -3,7 +3,7 @@ import { canUpgrade, cardDef } from '../game/cards';
 import { HEROES, xpToNext } from '../game/heroes';
 import { ACCESSORIES, ITEMS, type AccId, type ItemId } from '../game/loot';
 import {
-  addAcc, addItem, battleRewards, gainXp, healHero, levelUpChoices, newCard, nodeById, pickEvent, reachable, removeCard,
+  addAcc, addItem, battleRewards, gainXp, healHero, levelUpChoices, newCard, pickEvent, removeCard,
   restHeal, shopStock, treasure, upgradeCard, type EventDef, type EventFollowUp, type NodeType, type Run,
 } from '../game/run';
 import type { CardArt, CardInst, HeroId } from '../game/types';
@@ -11,11 +11,9 @@ import { app, btn, confirmBtn, modal, mount, toast } from './app';
 import { cardEl } from './card';
 import { h, img } from './dom';
 import { refreshTopBar, topBar } from './hud';
-import { HOURS, clock } from '../game/chapter1';
-import { dayPanel, memoriesPanel } from './story';
 
 // ───────────────────────── title ─────────────────────────
-export function titleScreen(hasSave: boolean): Promise<'new' | 'continue'> {
+export function titleScreen(hasSave: boolean): Promise<'new' | 'continue' | 'skip'> {
   app.stage.setMode('title', 'ruins');
   app.audio.music('title');
   app.stage.setUnits([]);
@@ -29,83 +27,11 @@ export function titleScreen(hasSave: boolean): Promise<'new' | 'continue'> {
       h('div.title-menu',
         hasSave ? btn('Continue Journey', () => resolve('continue'), 'title-btn primary') : null,
         btn('New Journey', () => resolve('new'), 'title-btn' + (hasSave ? '' : ' primary')),
+        btn('Skip Intro', () => resolve('skip'), 'title-btn'),
         btn('Settings', () => settings(), 'title-btn'),
       ),
       h('div.title-foot', '“Can you create a Slay the Spired inspired card game with a JRPG twist and look/feel? It should be AAA quality.”'),
     ));
-  });
-}
-
-// ───────────────────────── map ─────────────────────────
-const NODE_NAMES: Record<NodeType, string> = { battle: 'Battle', elite: 'Elite Battle', event: 'Mystery', inn: 'Inn', shop: 'Merchant', treasure: 'Treasure', boss: 'Boss' };
-const NODE_TIPS: Record<NodeType, string> = {
-  battle: 'Fight a group of monsters.', elite: 'A powerful foe. Guards an Accessory and more XP.', event: 'Something unusual awaits...',
-  inn: 'Rest to heal, or train to upgrade a card.', shop: 'Spend Shards on cards, Accessories and Items.', treasure: 'A chest with Shards and an Accessory.', boss: 'The master of this spire.',
-};
-const ROW_H = 118, MAP_W = 860;
-
-export function mapScreen(run: Run, theme: 'ruins' | 'depths' | 'boss' | 'dusk'): Promise<number> {
-  app.stage.setMode('map', theme);
-  app.stage.setUnits([]);
-  app.audio.music('map');
-  const avail = new Set(reachable(run));
-  const visited = new Set(run.path);
-  const ROWS = Math.max(...run.map.map(n => n.row)); // the boss row
-  const height = (ROWS + 1) * ROW_H + 160;
-  const pos = (id: number) => {
-    const n = nodeById(run, id);
-    const jx = ((id * 37) % 23) - 11, jy = ((id * 53) % 19) - 9;
-    return n.type === 'boss' ? { x: MAP_W / 2, y: 110 } : { x: 90 + n.col * ((MAP_W - 180) / 6) + jx, y: height - 90 - n.row * ROW_H + jy };
-  };
-  return new Promise(resolve => {
-    const NS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('width', String(MAP_W));
-    svg.setAttribute('height', String(height));
-    svg.setAttribute('class', 'map-lines');
-    for (const n of run.map) for (const to of n.next) {
-      const a = pos(n.id), b = pos(to);
-      const line = document.createElementNS(NS, 'line');
-      line.setAttribute('x1', String(a.x)); line.setAttribute('y1', String(a.y));
-      line.setAttribute('x2', String(b.x)); line.setAttribute('y2', String(b.y));
-      const walked = visited.has(n.id) && visited.has(to) && run.path.indexOf(to) === run.path.indexOf(n.id) + 1;
-      const next = (run.at === n.id || (run.at === null && false)) && avail.has(to);
-      line.setAttribute('class', walked ? 'walked' : next ? 'next' : '');
-      svg.append(line);
-    }
-    const nodes = run.map.map(n => {
-      const p = pos(n.id);
-      const cls = ['map-node', `t-${n.type}`, avail.has(n.id) ? 'avail' : '', visited.has(n.id) ? 'visited' : '', run.at === n.id ? 'current' : ''].filter(Boolean).join('.');
-      // story mode: every stop is a named place, and costs part of the day
-      const hours = run.story ? HOURS[n.type] : 0;
-      const tip = run.story
-        ? `<b>${n.label}</b><br>${NODE_NAMES[n.type]}. ${NODE_TIPS[n.type]}${hours ? `<br>Takes ${hours} hour${hours > 1 ? 's' : ''}: you'd leave at ${clock((run.hour ?? 6) + hours)}.` : ''}`
-        : `<b>${NODE_NAMES[n.type]}</b><br>${NODE_TIPS[n.type]}`;
-      const el = h('div.' + cls, { style: `left:${p.x}px; top:${p.y}px`, 'data-tip': tip },
-        h('div.map-node-ring'), img(uiIconUrl(n.type)),
-        run.story ? h('div.map-node-label', n.label ?? '') : null,
-        hours ? h('div.map-node-cost', `${hours}h`) : null);
-      if (avail.has(n.id)) el.addEventListener('click', () => { app.audio.sfx('map'); resolve(n.id); });
-      el.addEventListener('pointerenter', () => avail.has(n.id) && app.audio.sfx('hover'));
-      return el;
-    });
-    const scroller = h('div.map-scroll', h('div.map-canvas', { style: `height:${height}px; width:${MAP_W}px` }, svg as unknown as HTMLElement, nodes));
-    const root = mount(h('div.map-screen',
-      topBar(run),
-      run.story
-        ? h('div.map-title', h('div.map-title-name', 'Emberfall'), h('div.map-title-sub', 'Get Seren and the Hourglass out before dusk'))
-        : h('div.map-title', h('div.map-title-name', 'Shardfall Spire'), h('div.map-title-sub', 'Choose your path')),
-      run.story ? memoriesPanel(run.story) : null,
-      h('div.map-frame', scroller),
-      run.story
-        ? dayPanel(run.hour ?? 6)
-        : h('div.map-legend', h('div.legend-title', 'Legend'), (Object.keys(NODE_NAMES) as NodeType[]).map(t => h('div.legend-row', img(uiIconUrl(t)), NODE_NAMES[t]))),
-    ));
-    void root;
-    requestAnimationFrame(() => {
-      const row = run.at === null ? 0 : nodeById(run, run.at).row + 1;
-      scroller.scrollTop = height - 90 - row * ROW_H - scroller.clientHeight * 0.65;
-    });
   });
 }
 

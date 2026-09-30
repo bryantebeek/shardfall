@@ -1,6 +1,6 @@
 // Story screens: dialogue scenes over the stage, chapter cards, Memories, and the chapter's end.
 import { getSprite, portraitUrl } from '../art';
-import { DAWN_HOUR, DUSK_HOUR, MEMORIES, clock, type Memory, type Scene, type Speaker, type Story } from '../game/chapter1';
+import { MEMORIES, type Memory, type Scene, type Speaker, type Story } from '../game/chapter1';
 import type { HeroId } from '../game/types';
 import { app, btn, mount } from './app';
 import { h } from './dom';
@@ -101,26 +101,13 @@ export function chapterComplete(story: Story): Promise<void> {
       h('div.chapter-kicker', 'Chapter 1 complete'),
       h('h1.chapter-title', 'Emberfall'),
       h('div.window.chapter-stats',
-        h('div.stat-row', h('span', 'Dawns'), h('b', String(story.attempt))),
+        h('div.stat-row', h('span', 'Attempts'), h('b', String(story.attempt))),
         h('div.stat-row', h('span', 'Memories'), h('b', `${story.memories.length} of ${MEMORIES.length}`)),
         ...MEMORIES.map(m => h('div.chapter-memory' + (story.memories.includes(m.id) ? '.got' : ''),
           h('span.chapter-memory-kind', m.kind), story.memories.includes(m.id) ? m.text : '…'))),
       h('p.chapter-sub', 'Next: Chapter 2 — The Road of Lanterns'),
       btn('Return to Title', () => resolve(), 'big-btn')));
   });
-}
-
-/** the day so far, and how long until dusk (map screen) */
-export function dayPanel(hour: number): HTMLElement {
-  const pct = (x: number) => `${Math.min(100, ((x - DAWN_HOUR) / (DUSK_HOUR - DAWN_HOUR)) * 100)}%`;
-  const left = DUSK_HOUR - hour;
-  return h('div.map-clock' + (left < 0 ? '.late' : left <= 3 ? '.soon' : ''),
-    h('div.legend-title', 'The Day'),
-    h('div.clock-time', clock(hour)),
-    h('div.clock-track', h('div.clock-fill', { style: `width:${pct(hour)}` }), h('div.clock-sun', { style: `left:${pct(hour)}` })),
-    h('div.clock-ticks', [6, 9, 12, 15, 18].map(t => h('span', t === 18 ? 'Dusk' : String(t)))),
-    h('p.clock-note', left < 0 ? 'Dusk has fallen. On the hill, he has had all day to get ready.' : left === 0 ? 'Dusk. Get to the hill.' : `${left} hour${left > 1 ? 's' : ''} until Kaldra comes over the ridge.`),
-    h('div.clock-costs', 'Fight 2h · Elite 3h · Rest 2h · Event 1h · Market 1h'));
 }
 
 /** the Memories the party carries (map screen) */
@@ -130,5 +117,5 @@ export function memoriesPanel(story: Story): HTMLElement {
     story.memories.length
       ? story.memories.map(id => { const m = MEMORIES.find(x => x.id === id)!; return h('div.map-memory', { 'data-tip': `<b>${m.kind}</b><br>${m.use}` }, h('span.chapter-memory-kind', m.kind), m.text); })
       : h('div.map-memory.none', 'Nothing yet.'),
-    h('div.map-dawn', `Dawn ${story.attempt}`));
+    h('div.map-dawn', `Attempt ${story.attempt}`));
 }

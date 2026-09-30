@@ -3,7 +3,7 @@
 import type { Battle } from './battle';
 import type { StageUnit } from '../render/api';
 import { EMBERFALL } from './enemies';
-import { EVENTS, addAcc, addItem, damageHero, healHero, newRun, rollAcc, rollCards, withRng, type EventDef, type MapNode, type NodeType, type Run } from './run';
+import { EVENTS, addAcc, addItem, damageHero, healHero, newRun, rollAcc, rollCards, withRng, type EventDef, type Run } from './run';
 import type { SpriteId } from './types';
 
 // ───────────────────────── memories ─────────────────────────
@@ -17,8 +17,15 @@ export const MEMORIES: Memory[] = [
   { id: 'well', kind: 'People', text: 'The miller\'s daughter hides in the well.', use: 'At the Mill, look in the well.' },
 ];
 
-/** what persists across attempts: which dawn this is, what they remember, and what they've already seen */
-export interface Story { chapter: 1; attempt: number; memories: string[]; seen: string[] }
+/** what persists across attempts: which attempt this is, what they remember, and what they've seen */
+export interface Story {
+  chapter: 1; attempt: number; memories: string[]; seen: string[];
+  /** places reached in earlier attempts (or revealed by a Memory): they stay on the map */
+  known: number[];
+  /** each earlier attempt's route, and where it ended */
+  trails: number[][];
+  falls: { attempt: number; from: number; to: number }[];
+}
 /** things done this attempt (they're undone by a rewind) */
 export type Flag = 'bridgeDown' | 'nellSaved';
 
@@ -27,72 +34,116 @@ export const flagged = (run: Run, f: Flag) => !!run.flags?.includes(f);
 export function nextMemory(story: Story): Memory | null { return MEMORIES.find(m => !story.memories.includes(m.id)) ?? null; }
 
 /** A new chapter: the first night is attempt 1 (scripted); the escape starts at dawn. */
-export function newStory(): Story { return { chapter: 1, attempt: 1, memories: [], seen: [] }; }
+export function newStory(): Story { return { chapter: 1, attempt: 1, memories: [], seen: [], known: [START], trails: [], falls: [] }; }
 
 /** Dawn: a fresh party, deck and purse, and everything they remember. */
 export function beginAttempt(story: Story, seed?: number): Run {
   const run = newRun(seed);
   run.story = story;
   run.flags = [];
-  run.map = emberfallMap();
-  run.hour = DAWN_HOUR;
+  run.map = [];
+  run.at = START;
+  run.path = [START];
   return run;
 }
 
-// ───────────────────────── the day ─────────────────────────
-/** The chapter is one day: Kaldra comes over the ridge at dusk. Every stop costs hours. */
-export const DAWN_HOUR = 6, DUSK_HOUR = 18;
-export const HOURS: Record<NodeType, number> = { battle: 2, elite: 3, event: 1, shop: 1, inn: 2, treasure: 1, boss: 0 };
-export const clock = (hour: number) => `${String(Math.floor(hour)).padStart(2, '0')}:00`;
-/** time passes at each stop */
-export function spendHours(run: Run, node: MapNode) { run.hour = (run.hour ?? DAWN_HOUR) + HOURS[node.type]; }
-export const late = (run: Run) => (run.hour ?? DAWN_HOUR) > DUSK_HOUR;
-
-/** What the party brings to a fight with the Ashen Knight: what they remember, and whether they're late. */
+/** What the party remembers about the Ashen Knight. */
 export const knightSetup = (run: Run) => (b: Battle) => {
   for (const e of b.enemies) {
     if (e.def !== 'ashknight') continue;
     if (knows(run, 'guard')) { e.known = [...e.weak]; e.shield = e.maxShield = 3; }
-    if (late(run)) e.st.str = 3; // he's had all day to get ready
   }
 };
 
-/** The party fell: back to dawn, remembering one more thing. Returns the Memory gained (if any). */
-export function rewind(run: Run): { run: Run; memory: Memory | null } {
+/**
+ * The party fell (on the road from `from` to `to`, or at a place when they're equal): back to dawn,
+ * remembering one more thing. The route they took stays on the map. Returns the Memory gained (if any).
+ */
+export function rewind(run: Run, from = here(run), to = here(run)): { run: Run; memory: Memory | null } {
   const story = run.story!;
+  for (const id of run.path) if (!story.known.includes(id)) story.known.push(id);
+  if (run.path.length > 1) story.trails.push([...run.path]);
+  story.falls.push({ attempt: story.attempt, from, to });
   story.attempt++;
   const memory = nextMemory(story);
-  if (memory) story.memories.push(memory.id);
+  if (memory) {
+    story.memories.push(memory.id);
+    const reveals = REVEALS[memory.id];
+    if (reveals !== undefined && !story.known.includes(reveals)) story.known.push(reveals);
+  }
   return { run: beginAttempt(story), memory };
 }
 
 // ───────────────────────── the map ─────────────────────────
-/** Two ways out of the village (the north bridge, or the forest road), both ending on the hill. */
-export function emberfallMap(): MapNode[] {
-  const N = (id: number, row: number, col: number, type: NodeType, label: string, next: number[], event?: string): MapNode => ({ id, row, col, type, next, label, event });
-  return [
-    N(0, 0, 2, 'battle', 'Village Square', [2, 3]),
-    N(1, 0, 4, 'event', 'The Mill', [3, 4], 'mill'),
-    N(2, 1, 1, 'event', 'Shrine Library', [5], 'library'),
-    N(3, 1, 3, 'battle', 'Market Lane', [5, 6]),
-    N(4, 1, 5, 'shop', 'Emberfall Market', [6]),
-    N(5, 2, 2, 'battle', 'Shrine Road', [7, 8]),
-    N(6, 2, 4, 'inn', 'The Hayloft', [8, 9]),
-    N(7, 3, 1, 'event', 'The North Bridge', [10], 'bridge'),
-    N(8, 3, 3, 'battle', 'Forest Road', [10, 11]),
-    N(9, 3, 5, 'elite', 'Woodcutter\'s Camp', [11]),
-    N(10, 4, 2, 'battle', 'Ridge Path', [12]),
-    N(11, 4, 4, 'event', 'Wayside Shrine', [12], 'shrine'),
-    N(12, 5, 3, 'battle', 'Hill Road', [13]),
-    N(13, 6, 3, 'boss', 'The Hill', []),
-  ];
+/**
+ * Emberfall as a place: locations joined by roads (coordinates on a 1320×900 map). Fights happen on roads;
+ * places hold the events, the market, rest, the elite and the hill. Side trips are dead ends you walk back from.
+ */
+export type PlaceKind = 'start' | 'crossroads' | 'event' | 'shop' | 'inn' | 'elite' | 'boss';
+export interface Place { id: number; name: string; x: number; y: number; kind: PlaceKind; text: string; event?: string; spur?: boolean; far?: boolean }
+export interface Road { from: number; to: number; ambush?: string }
+
+export const START = 0;
+export const PLACES: Place[] = [
+  { id: 0, name: 'The Anchorlight', x: 640, y: 800, kind: 'start', text: 'Seren\'s shrine. Every attempt starts here.' },
+  { id: 1, name: 'Shrine Library', x: 420, y: 760, kind: 'event', event: 'library', spur: true, text: 'Pilgrim records, weather almanacs, and Lyra.' },
+  { id: 2, name: 'Village Square', x: 660, y: 630, kind: 'crossroads', text: 'The heart of the village. Roads lead north and into the forest.' },
+  { id: 3, name: 'The Mill', x: 950, y: 720, kind: 'event', event: 'mill', spur: true, text: 'The wheel still turns. Nobody is working it.' },
+  { id: 4, name: 'Emberfall Market', x: 900, y: 560, kind: 'shop', spur: true, text: 'Stalls, and a merchant who takes Shards.' },
+  { id: 5, name: 'The North Bridge', x: 420, y: 420, kind: 'event', event: 'bridge', far: true, text: 'Three stone arches over a cold river.' },
+  { id: 6, name: 'Wayside Shrine', x: 190, y: 290, kind: 'event', event: 'shrine', spur: true, far: true, text: 'A pillar of crystal on the old pilgrim path.' },
+  { id: 7, name: 'Forest Edge', x: 900, y: 420, kind: 'crossroads', far: true, text: 'Where the trees close over the road.' },
+  { id: 8, name: 'Woodcutter\'s Camp', x: 1160, y: 320, kind: 'elite', spur: true, far: true, text: 'Kaldra\'s vanguard has made camp here.' },
+  { id: 9, name: 'Shepherd\'s Hut', x: 840, y: 250, kind: 'inn', far: true, text: 'Empty. A cold hearth, and a door that locks.' },
+  { id: 10, name: 'The Hill', x: 600, y: 110, kind: 'boss', far: true, text: 'The way out of Emberfall.' },
+];
+export const ROADS: Road[] = [
+  { from: 0, to: 1 },
+  { from: 0, to: 2, ambush: 'Kaldran scouts' },
+  { from: 2, to: 3, ambush: 'Something in the mill lane' },
+  { from: 2, to: 4 },
+  { from: 2, to: 5, ambush: 'The north road' },
+  { from: 5, to: 6, ambush: 'The old pilgrim path' },
+  { from: 5, to: 10, ambush: 'The ridge path' },
+  { from: 2, to: 7, ambush: 'The forest road' },
+  { from: 7, to: 8 },
+  { from: 7, to: 9, ambush: 'Deep in the forest' },
+  { from: 9, to: 10, ambush: 'The hill road' },
+];
+/** Pathfinding and People Memories put a place on the map */
+const REVEALS: Record<string, number> = { bridge: 5, well: 3 };
+
+export const here = (run: Run) => run.at ?? START;
+/** the further from the village, the later it gets */
+export const storyTheme = (run: Run): 'ruins' | 'dusk' => (PLACES[here(run)].far ? 'dusk' : 'ruins');
+
+/** Where the party can go: onward to places not yet visited this attempt, or back the way they came from a side trip. */
+export function exits(run: Run): { road: Road; to: Place; back: boolean }[] {
+  const at = here(run);
+  if (PLACES[at].spur) {
+    const road = ROADS.find(r => r.to === at)!;
+    return [{ road, to: PLACES[road.from], back: true }];
+  }
+  return ROADS.filter(r => r.from === at && !run.path.includes(r.to)).map(road => ({ road, to: PLACES[road.to], back: false }));
 }
 
-/** who a battle node puts in front of the party */
-export function emberfallEnemies(run: Run, node: MapNode): string[] {
-  if (node.type === 'boss') return flagged(run, 'bridgeDown') ? ['ashknight'] : ['soldier', 'ashknight', 'soldier'];
-  const pool = node.type === 'elite' ? EMBERFALL.elite : node.row < 2 ? EMBERFALL.easy : EMBERFALL.normal;
-  return [...withRng(run, r => r.pick(pool))];
+/** Walk to a place. Returns whether the road is ambushed (first time only) and whether the place is new. */
+export function travel(run: Run, to: number): { road: Road; place: Place; ambush: boolean; arrive: boolean } {
+  const x = exits(run).find(e => e.to.id === to);
+  if (!x) throw new Error(`can't go to ${to} from ${here(run)}`);
+  const arrive = !run.path.includes(to);
+  run.at = to;
+  run.path.push(to);
+  return { road: x.road, place: x.to, ambush: !x.back && !!x.road.ambush, arrive };
+}
+
+/** who waits on a road, or at a place */
+export function roadEnemies(run: Run, road: Road): string[] {
+  return [...withRng(run, r => r.pick(PLACES[road.to].far ? EMBERFALL.normal : EMBERFALL.easy))];
+}
+export function placeEnemies(run: Run, place: Place): string[] {
+  if (place.kind === 'boss') return flagged(run, 'bridgeDown') ? ['ashknight'] : ['soldier', 'ashknight', 'soldier'];
+  return [...withRng(run, r => r.pick(EMBERFALL.elite))];
 }
 
 // ───────────────────────── events ─────────────────────────
@@ -120,7 +171,7 @@ export const EMBERFALL_EVENTS: Record<string, EventDef> = {
     text: 'Pilgrim records and weather almanacs going back three hundred years. Lyra runs a finger along a spine she has clearly read before.',
     options: () => [
       { label: 'Read', desc: 'Choose 1 of 3 cards.', go: r => ({ text: '"Here," Lyra says, pulling down three books without looking. "These are the only useful ones."', follow: { kind: 'cards', cards: withRng(r, x => rollCards(x, 3, { common: 40, uncommon: 45, rare: 15 })) } }) },
-      { label: 'Study', desc: 'Upgrade a card.', go: () => ({ text: 'An hour you don\'t really have, well spent.', follow: { kind: 'upgrade' } }) },
+      { label: 'Study', desc: 'Upgrade a card.', go: () => ({ text: 'Lyra reads over your shoulder and corrects you twice.', follow: { kind: 'upgrade' } }) },
       leave,
     ] },
   bridge: { id: 'bridge', title: 'The North Bridge', sprite: 'dummy',
@@ -224,8 +275,7 @@ export function hillScene(run: Run): Scene {
   const escort = flagged(run, 'bridgeDown')
     ? { text: 'Behind him, the road is empty. The soldiers are still on the far side of a river.' }
     : { text: 'Two of Kaldra\'s soldiers come up the path behind him.', cast: [...PARTY, U('e0', 'soldier'), U('e1', 'ashknight'), U('e2', 'soldier')] };
-  const dark = late(run) ? [{ text: 'The sun is already down. He has had all day to get ready.' }] : [];
-  if (!first) return { theme: 'dusk', cast: [...PARTY, KNIGHT], lines: [{ text: 'He is waiting on the hill again.' }, ...dark, escort] };
+  if (!first) return { theme: 'dusk', cast: [...PARTY, KNIGHT], lines: [{ text: 'He is waiting on the hill again.' }, escort] };
   return { theme: 'dusk', cast: PARTY, lines: [
     { text: 'The road over the hill is empty. Then it isn\'t.', cast: [...PARTY, KNIGHT] },
     { text: 'The grey knight is standing in the middle of it, as if he has been waiting since noon.' },
@@ -233,7 +283,6 @@ export function hillScene(run: Run): Scene {
     { who: 'seren', text: 'He did.' },
     { who: 'aldric', text: 'How?' },
     { who: 'seren', text: '...He remembers too.' },
-    ...dark,
     escort,
   ] };
 }

@@ -127,7 +127,7 @@ describe.skipIf(!env.SIM)('balance sim', () => {
 // Chapter 1: one route out of Emberfall (square → lane → hayloft → forest road → ridge → hill road → the hill), with and without Memories.
 describe.skipIf(!env.SIM)('chapter 1 sim', () => {
   it('escapes Emberfall', async () => {
-    const { beginAttempt, emberfallEnemies, newStory } = await import('./chapter1');
+    const { beginAttempt, knightSetup, newStory, placeEnemies, roadEnemies, travel } = await import('./chapter1');
     const N = Number(env.SIM_N ?? 100);
     const lines: string[] = [];
     for (const mem of [[], ['guard'], ['guard', 'bridge']]) {
@@ -138,23 +138,29 @@ describe.skipIf(!env.SIM)('chapter 1 sim', () => {
         const run = beginAttempt(story, 3000 + i);
         if (mem.includes('bridge')) run.flags!.push('bridgeDown');
         const r = new Rng(i);
-        for (const id of [0, 3, 6, 8, 10, 12, 13]) {
-          const node = run.map[id];
-          if (node.type === 'inn') { if (run.heroes.some(h => h.hp < h.maxHp * 0.6)) restHeal(run); continue; }
-          run.at = id;
-          if (node.type === 'boss') reach++;
-          const b = new Battle(battleInit(run, { enemies: emberfallEnemies(run, node), hpScale: 1 }));
-          if (mem.includes('guard')) for (const e of b.enemies) if (e.def === 'ashknight') { e.known = [...e.weak]; e.shield = e.maxShield = 3; }
+        const battle = (type: NodeType, enemies: string[]) => {
+          const b = new Battle(battleInit(run, { enemies, hpScale: 1 }));
+          knightSetup(run)(b);
           b.start();
           while (!b.over && b.turn < 40) botTurn(b);
           afterBattle(run, b);
-          if (b.over !== 'win') break;
-          if (node.type === 'boss') { wins++; break; }
-          const rw = battleRewards(run, node.type);
-            if (rw.cards.length && r.chance(0.7)) run.deck.push(newCard(run, rw.cards[r.int(rw.cards.length)]));
+          if (b.over !== 'win' || type === 'boss') return b.over === 'win';
+          const rw = battleRewards(run, type);
+          if (rw.cards.length && r.chance(0.7)) run.deck.push(newCard(run, rw.cards[r.int(rw.cards.length)]));
           const ups = gainXp(run, rw.xp);
           for (let u = 0; u < ups; u++) run.deck.push(newCard(run, r.pick(levelUpChoices(run))));
+          return true;
+        };
+        // the forest route with the mill on the way: square, mill and back, forest edge, the hut (rest), the hill
+        let alive = true;
+        for (const id of [2, 3, 2, 7, 9, 10]) {
+          const step = travel(run, id);
+          if (step.ambush && !battle('battle', roadEnemies(run, step.road))) { alive = false; break; }
+          if (!step.arrive) continue;
+          if (step.place.kind === 'inn' && run.heroes.some(h => h.hp < h.maxHp * 0.6)) restHeal(run);
+          if (step.place.kind === 'boss') { reach++; if (battle('boss', placeEnemies(run, step.place))) wins++; }
         }
+        void alive;
       }
       lines.push(`memories [${mem.join(', ') || 'none'}]`.padEnd(34) + `reach the hill ${Math.round((100 * reach) / N)}%   escape ${Math.round((100 * wins) / N)}%`);
     }

@@ -1,7 +1,7 @@
 // Chapter 1 — Emberfall (see STORY.md): the map, the Memories, the village's events and the script.
 // Fail, and Seren's Hourglass returns the party to dawn with a new Memory; reach the hill, and the chapter ends.
 import type { Battle } from './battle';
-import type { StageUnit } from '../render/api';
+import type { StageSet, StageUnit } from '../render/api';
 import { EMBERFALL } from './enemies';
 import { EVENTS, addAcc, addItem, damageHero, healHero, newRun, rollAcc, rollCards, withRng, type EventDef, type Run } from './run';
 import type { SpriteId } from './types';
@@ -80,22 +80,22 @@ export function rewind(run: Run, from = here(run), to = here(run)): { run: Run; 
  * places hold the events, the market, rest, the elite and the hill. Side trips are dead ends you walk back from.
  */
 export type PlaceKind = 'start' | 'crossroads' | 'event' | 'shop' | 'inn' | 'elite' | 'boss';
-export interface Place { id: number; name: string; x: number; y: number; kind: PlaceKind; text: string; event?: string; spur?: boolean; far?: boolean }
+export interface Place { id: number; name: string; x: number; y: number; kind: PlaceKind; text: string; event?: string; spur?: boolean; far?: boolean; set: StageSet }
 export interface Road { from: number; to: number; ambush?: string }
 
 export const START = 0;
 export const PLACES: Place[] = [
-  { id: 0, name: 'The Anchorlight', x: 640, y: 800, kind: 'start', text: 'Seren\'s shrine. Every attempt starts here.' },
-  { id: 1, name: 'Shrine Library', x: 420, y: 760, kind: 'event', event: 'library', spur: true, text: 'Pilgrim records, weather almanacs, and Lyra.' },
-  { id: 2, name: 'Village Square', x: 660, y: 630, kind: 'crossroads', text: 'The heart of the village. Roads lead north and into the forest.' },
-  { id: 3, name: 'The Mill', x: 950, y: 720, kind: 'event', event: 'mill', spur: true, text: 'The wheel still turns. Nobody is working it.' },
-  { id: 4, name: 'Emberfall Market', x: 900, y: 560, kind: 'shop', spur: true, text: 'Stalls, and a merchant who takes Shards.' },
-  { id: 5, name: 'The North Bridge', x: 420, y: 420, kind: 'event', event: 'bridge', far: true, text: 'Three stone arches over a cold river.' },
-  { id: 6, name: 'Wayside Shrine', x: 190, y: 290, kind: 'event', event: 'shrine', spur: true, far: true, text: 'A pillar of crystal on the old pilgrim path.' },
-  { id: 7, name: 'Forest Edge', x: 900, y: 420, kind: 'crossroads', far: true, text: 'Where the trees close over the road.' },
-  { id: 8, name: 'Woodcutter\'s Camp', x: 1160, y: 320, kind: 'elite', spur: true, far: true, text: 'Kaldra\'s vanguard has made camp here.' },
-  { id: 9, name: 'Shepherd\'s Hut', x: 840, y: 250, kind: 'inn', far: true, text: 'Empty. A cold hearth, and a door that locks.' },
-  { id: 10, name: 'The Hill', x: 600, y: 110, kind: 'boss', far: true, text: 'The way out of Emberfall.' },
+  { id: 0, name: 'The Anchorlight', x: 640, y: 800, kind: 'start', text: 'Seren\'s shrine. Every attempt starts here.', set: 'shrine' },
+  { id: 1, name: 'Shrine Library', x: 420, y: 760, kind: 'event', event: 'library', spur: true, text: 'Pilgrim records, weather almanacs, and Lyra.', set: 'shrine' },
+  { id: 2, name: 'Village Square', x: 660, y: 630, kind: 'crossroads', text: 'The heart of the village. Roads lead north and into the forest.', set: 'village' },
+  { id: 3, name: 'The Mill', x: 950, y: 720, kind: 'event', event: 'mill', spur: true, text: 'The wheel still turns. Nobody is working it.', set: 'village' },
+  { id: 4, name: 'Emberfall Market', x: 900, y: 560, kind: 'shop', spur: true, text: 'Stalls, and a merchant who takes Shards.', set: 'village' },
+  { id: 5, name: 'The North Bridge', x: 420, y: 420, kind: 'event', event: 'bridge', far: true, text: 'Three stone arches over a cold river.', set: 'bridge' },
+  { id: 6, name: 'Wayside Shrine', x: 190, y: 290, kind: 'event', event: 'shrine', spur: true, far: true, text: 'A pillar of crystal on the old pilgrim path.', set: 'shrine' },
+  { id: 7, name: 'Forest Edge', x: 900, y: 420, kind: 'crossroads', far: true, text: 'Where the trees close over the road.', set: 'forest' },
+  { id: 8, name: 'Woodcutter\'s Camp', x: 1160, y: 320, kind: 'elite', spur: true, far: true, text: 'Kaldra\'s vanguard has made camp here.', set: 'forest' },
+  { id: 9, name: 'Shepherd\'s Hut', x: 840, y: 250, kind: 'inn', far: true, text: 'Empty. A cold hearth, and a door that locks.', set: 'forest' },
+  { id: 10, name: 'The Hill', x: 600, y: 110, kind: 'boss', far: true, text: 'The way out of Emberfall.', set: 'hill' },
 ];
 export const ROADS: Road[] = [
   { from: 0, to: 1 },
@@ -116,6 +116,8 @@ const REVEALS: Record<string, number> = { bridge: 5, well: 3 };
 export const here = (run: Run) => run.at ?? START;
 /** the further from the village, the later it gets */
 export const storyTheme = (run: Run): 'ruins' | 'dusk' => (PLACES[here(run)].far ? 'dusk' : 'ruins');
+/** where it happens: the set of the place the party is at (or walking to) */
+export const storySet = (run: Run): StageSet => PLACES[here(run)].set;
 
 /** Where the party can go: onward to places not yet visited this attempt, or back the way they came from a side trip. */
 export function exits(run: Run): { road: Road; to: Place; back: boolean }[] {
@@ -198,14 +200,14 @@ export interface Line {
   cast?: StageUnit[];
   fx?: 'flash' | 'shake';
 }
-export interface Scene { theme: 'ruins' | 'dusk'; cinematic?: boolean; cast: StageUnit[]; lines: Line[] }
+export interface Scene { theme: 'ruins' | 'dusk'; set: StageSet; cinematic?: boolean; cast: StageUnit[]; lines: Line[] }
 
 const U = (id: string, sprite: SpriteId, side: 'hero' | 'enemy' = 'enemy'): StageUnit => ({ id, sprite, side });
 const ALDRIC = U('knight', 'knight', 'hero'), LYRA = U('bmage', 'bmage', 'hero'), SEREN = U('wmage', 'wmage', 'hero');
 const PARTY = [ALDRIC, LYRA, SEREN];
 const KNIGHT = U('e0', 'ashknight');
 
-export const PROLOGUE: Scene = { theme: 'dusk', cinematic: true, cast: [], lines: [
+export const PROLOGUE: Scene = { theme: 'dusk', set: 'village', cinematic: true, cast: [], lines: [
   { text: 'Twenty years ago.' },
   { text: 'The crystal that lit the kingdom came apart in a single night, and light fell out of the sky like rain.' },
   { text: 'A boy woke under a fallen roof.' },
@@ -216,7 +218,7 @@ export const PROLOGUE: Scene = { theme: 'dusk', cinematic: true, cast: [], lines
   { text: 'When he turned around, the knight had gone back into the fire.' },
 ] };
 
-export const ARRIVAL: Scene = { theme: 'ruins', cast: [ALDRIC], lines: [
+export const ARRIVAL: Scene = { theme: 'ruins', set: 'village', cast: [ALDRIC], lines: [
   { text: 'Emberfall, a shrine village at the edge of the Dimming. The days here are already shorter than they should be.' },
   { text: 'Aldric Voss was captain of a princess\'s guard, once. Now he walks beside Order supply wagons for coin.' },
   { who: 'caravan', text: 'Last stop, Sir Voss. Grain for the shrine, lamp oil, and whatever the Archbishop\'s clerks packed that weighs this much.' },
@@ -236,14 +238,14 @@ export const ARRIVAL: Scene = { theme: 'ruins', cast: [ALDRIC], lines: [
   { text: 'He doesn\'t think about it again.' },
 ] };
 
-export const DUSK: Scene = { theme: 'dusk', cast: [ALDRIC], lines: [
+export const DUSK: Scene = { theme: 'dusk', set: 'shrine', cast: [ALDRIC], lines: [
   { text: 'At dusk, the bell in the watchtower starts ringing, and doesn\'t stop.' },
   { text: 'Kaldra\'s soldiers come over the ridge with torches. In front of them walks a knight in grey armour, grown through with crystal.', cast: [ALDRIC, U('e1', 'soldier'), KNIGHT, U('e2', 'soldier')] },
   { who: 'aldric', text: 'Get to the cellar. All of you.' },
   { text: 'The grey knight stops at the foot of the shrine steps and looks up at him for a long moment, as if he were remembering something.' },
 ] };
 
-export const DAWN: Scene = { theme: 'ruins', cast: [ALDRIC], lines: [
+export const DAWN: Scene = { theme: 'ruins', set: 'village', cast: [ALDRIC], lines: [
   { text: 'He wakes at dawn.', fx: 'flash' },
   { text: 'The same bed. The same smell of bread from across the square. The same caravan outside, its horses stamping.' },
   { text: 'Seren is in the doorway with the relic in her hands. It is glowing like a sunrise.', cast: [ALDRIC, SEREN] },
@@ -254,7 +256,7 @@ export const DAWN: Scene = { theme: 'ruins', cast: [ALDRIC], lines: [
   { who: 'seren', text: 'To this morning. It gives back a little of what happened after. Hold on to what you remember. It\'s the only thing that comes with us.' },
 ] };
 
-export const DAWN_AFTER: Scene = { theme: 'ruins', cast: PARTY, lines: [
+export const DAWN_AFTER: Scene = { theme: 'ruins', set: 'village', cast: PARTY, lines: [
   { who: 'lyra', text: 'I had the strangest dream. There was a grey knight, and you were on the steps, and—' },
   { who: 'lyra', text: 'You had it too.' },
   { who: 'seren', text: 'They come over the ridge at dusk. We leave before then, with the Hourglass. That\'s all that matters today.' },
@@ -264,7 +266,7 @@ export const DAWN_AFTER: Scene = { theme: 'ruins', cast: PARTY, lines: [
 ] };
 
 /** after any later fall */
-export const REWIND: Scene = { theme: 'ruins', cast: PARTY, lines: [
+export const REWIND: Scene = { theme: 'ruins', set: 'village', cast: PARTY, lines: [
   { text: 'Light, everywhere at once.', fx: 'flash' },
   { text: 'Then bread, and horses, and the same grey morning.' },
   { who: 'seren', text: 'Again. Tell me what you saw.' },
@@ -275,8 +277,8 @@ export function hillScene(run: Run): Scene {
   const escort = flagged(run, 'bridgeDown')
     ? { text: 'Behind him, the road is empty. The soldiers are still on the far side of a river.' }
     : { text: 'Two of Kaldra\'s soldiers come up the path behind him.', cast: [...PARTY, U('e0', 'soldier'), U('e1', 'ashknight'), U('e2', 'soldier')] };
-  if (!first) return { theme: 'dusk', cast: [...PARTY, KNIGHT], lines: [{ text: 'He is waiting on the hill again.' }, escort] };
-  return { theme: 'dusk', cast: PARTY, lines: [
+  if (!first) return { theme: 'dusk', set: 'hill', cast: [...PARTY, KNIGHT], lines: [{ text: 'He is waiting on the hill again.' }, escort] };
+  return { theme: 'dusk', set: 'hill', cast: PARTY, lines: [
     { text: 'The road over the hill is empty. Then it isn\'t.', cast: [...PARTY, KNIGHT] },
     { text: 'The grey knight is standing in the middle of it, as if he has been waiting since noon.' },
     { who: 'lyra', text: 'That\'s not possible. We came the other way. Nobody knew we\'d come this way.' },
@@ -287,7 +289,7 @@ export function hillScene(run: Run): Scene {
   ] };
 }
 
-export const ENDING: Scene = { theme: 'dusk', cast: [...PARTY, KNIGHT], lines: [
+export const ENDING: Scene = { theme: 'dusk', set: 'hill', cast: [...PARTY, KNIGHT], lines: [
   { text: 'They are cornered at the top of the hill, with the village burning below.' },
   { text: 'The grey knight walks past Aldric as if he weren\'t there, and raises his blade over Lyra.' },
   { text: 'And stops.' },

@@ -71,6 +71,7 @@ A chapter map is a real place, not a ladder of rows.
 - **Places** hold events, the market, rest (an inn), elite fights and the goal. Their content happens the first time you arrive.
 - **Side trips** (dead ends) are free to walk back from; other roads only lead onward.
 - **Fog:** you see where you are, where you've been this attempt and the next places along the roads. Everything else is dark.
+- **Each place has its own 3D set** (the shrine, the village, the forest road, the north bridge, the hill). A fight on a road uses the set of the place you're heading to, and the map's backdrop is the set where the party is.
 - **The map remembers across attempts:** places reached in earlier attempts stay visible (in italic blue); Memories can reveal places you haven't reached; the routes of the last three attempts show as faint dotted trails; a crystal marks where each of the last three attempts fell.
 
 ## Memories
@@ -107,6 +108,8 @@ Gained one per fall, in a fixed order per chapter. Three kinds so far:
 | Woodcutter's Camp | Elite: Kaldran Captain + Soldier (side trip) | Forest Edge, free |
 | Shepherd's Hut | Rest (inn) | Forest Edge, ambush |
 | The Hill | The Ashen Knight | Bridge or Hut, ambush |
+
+Sets: the Anchorlight, the library and the Wayside Shrine use the shrine; the square, the mill and the market the village; Forest Edge, the camp and the hut the forest road; the North Bridge the bridge; the Hill the hill.
 
 Two ways out: the **North Bridge** road (fewer fights, no rest) or the **forest** road (a rest stop and the optional elite). The Bridge, the Wayside Shrine and everything past the Square toward the forest are *far*: fights there are harder and the light turns to dusk.
 

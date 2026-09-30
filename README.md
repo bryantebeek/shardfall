@@ -9,7 +9,7 @@ A story-driven JRPG deckbuilder with an HD-2D (Octopath Traveler-like) look, run
 - **Break system**: enemies have shields and hidden elemental weaknesses. Hit weaknesses to break them: they lose a turn, take +50% damage, and pay out **Crystal Shards**, the currency.
 - **Party levels**, accessories, items (Potion, Ether, Phoenix Down...), events, a market and inns.
 - **Installable** as an app (PWA) from any HTTPS address or localhost, and playable offline once loaded.
-- Everything is procedural: pixel art is drawn in code, the 3D diorama is built in Three.js, and all music/SFX are synthesized with WebAudio.
+- Everything is procedural: pixel art is drawn in code, the 3D sets (shrine, village, forest road, bridge, hill) are built in Three.js, and all music/SFX are synthesized with WebAudio.
 
 ## Run
 

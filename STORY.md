@@ -134,6 +134,7 @@ At dusk Kaldra's soldiers come over the ridge, led by the Ashen Knight. Aldric f
 - **Memories arrive in this order:** the Knight's left guard (from the first night), then the north bridge, then the well. Each later fall gives the next one.
 - **The twist is the hill scene:** whichever road they take, the Knight is waiting on the hill. Lyra: *"Nobody knew we'd come this way."* Seren: *"He did... He remembers too."*
 - **The escape ends** when the Knight is at half health: he hesitates over Lyra, they run, and Seren sets the first Anchor. Last line: *"Behind them, Emberfall burns. Aldric doesn't look back."* (It sets up the Finale, where he does.)
+- **Scenes and fights happen in their own places:** the prologue and the dawns in the village, the first night on the shrine steps, the hill (with Emberfall burning in the valley below) for the twist and the ending.
 - **The map** is Emberfall itself: the Anchorlight, the library, the square, the mill, the market, the north bridge, the wayside shrine, the forest, the shepherd's hut and the hill. Earlier attempts' routes and falls stay on it.
 - **Attempts are counted from the first night** (attempt 1). The counter is shown from the start; the story's big reveal of the number is Chapter 6 (*Loop 412*).
 

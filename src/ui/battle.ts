@@ -6,6 +6,7 @@ import { ITEMS } from '../game/loot';
 import { afterBattle, battleInit, encounter, theme, type NodeType, type Run } from '../game/run';
 import type { CardInst, Element, HeroId, Intent, StatusId } from '../game/types';
 import type { Sfx } from '../audio/api';
+import type { StageSet } from '../render/api';
 import { app, banner as showBanner, btn, mount, toast } from './app';
 import { cardEl, refreshCardText } from './card';
 import { ELEMENT_NAMES, STATUS_INFO, h, img, statusChip, wait as sleep } from './dom';
@@ -23,12 +24,12 @@ const EL_SFX: Record<Element, Sfx> = { phys: 'slash', fire: 'fire', ice: 'ice', 
 type Aim = { kind: 'card'; uid: string; sticky: boolean } | { kind: 'item'; slot: number };
 
 /** `setup` adjusts the battle before it starts (e.g. what a Memory reveals); `theme` overrides the lighting. */
-export async function battleScreen(run: Run, type: NodeType, enemies?: string[], opts: { theme?: 'ruins' | 'dusk'; setup?: (b: Battle) => void } = {}): Promise<boolean> {
+export async function battleScreen(run: Run, type: NodeType, enemies?: string[], opts: { theme?: 'ruins' | 'dusk'; set?: StageSet; setup?: (b: Battle) => void } = {}): Promise<boolean> {
   const enc = enemies ? { enemies, hpScale: 1 } : encounter(run, type);
   const b = new Battle(battleInit(run, enc));
   opts.setup?.(b);
   const { stage, audio } = app;
-  stage.setMode('battle', opts.theme ?? (type === 'boss' && !run.story ? 'boss' : theme(run)));
+  stage.setMode('battle', opts.theme ?? (type === 'boss' && !run.story ? 'boss' : theme(run)), opts.set);
   stage.setUnits([
     ...b.heroes.map(h => ({ id: h.id, sprite: h.id, side: 'hero' as const })),
     ...b.enemies.map(e => ({ id: e.id, sprite: e.sprite, side: 'enemy' as const })),

@@ -28,7 +28,7 @@ const SPEAKERS: Record<Speaker, { name: string; face?: () => string }> = {
 
 /** Click, Enter or Space advances; Skip jumps to the end. */
 export function scene(s: Scene): Promise<void> {
-  app.stage.setMode(s.cinematic ? 'title' : 'battle', s.theme);
+  app.stage.setMode(s.cinematic ? 'title' : 'battle', s.theme, s.set);
   app.stage.setUnits([]);
   app.stage.setUnits(s.cast);
   app.audio.music(s.theme === 'dusk' ? 'elite' : 'inn');
@@ -69,7 +69,7 @@ export function scene(s: Scene): Promise<void> {
 
 /** a title card between scenes */
 export function chapterCard(kicker: string, title: string, sub = ''): Promise<void> {
-  app.stage.setMode('title', 'ruins');
+  app.stage.setMode('title', 'ruins', 'village');
   app.stage.setUnits([]);
   return new Promise(resolve => {
     const root = mount(h('div.chapter-card',
@@ -93,7 +93,7 @@ export function memoryCard(m: Memory): Promise<void> {
 }
 
 export function chapterComplete(story: Story): Promise<void> {
-  app.stage.setMode('title', 'dusk');
+  app.stage.setMode('title', 'dusk', 'hill');
   app.stage.setUnits([]);
   app.audio.music('title');
   return new Promise(resolve => {

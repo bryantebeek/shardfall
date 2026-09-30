@@ -14,7 +14,7 @@ import { refreshTopBar, topBar } from './hud';
 
 // ───────────────────────── title ─────────────────────────
 export function titleScreen(hasSave: boolean): Promise<'new' | 'continue' | 'skip'> {
-  app.stage.setMode('title', 'ruins');
+  app.stage.setMode('title', 'ruins', 'shrine');
   app.audio.music('title');
   app.stage.setUnits([]);
   return new Promise(resolve => {

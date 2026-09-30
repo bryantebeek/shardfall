@@ -1,7 +1,7 @@
 // The chapter map: Emberfall as a place, not a ladder. Roads between real locations, fog over what the
 // party hasn't seen, and what earlier attempts left behind (their routes, and where they fell).
 import { portraitUrl, uiIconUrl, type UiIcon } from '../art';
-import { PLACES, ROADS, exits, here, storyTheme, type PlaceKind, type Road } from '../game/chapter1';
+import { PLACES, ROADS, exits, here, storySet, storyTheme, type PlaceKind, type Road } from '../game/chapter1';
 import { Rng } from '../game/rng';
 import type { Run } from '../game/run';
 import { app, mount } from './app';
@@ -70,7 +70,7 @@ function terrain(): SVGElement {
 }
 
 export function placeMapScreen(run: Run): Promise<number> {
-  app.stage.setMode('map', storyTheme(run));
+  app.stage.setMode('map', storyTheme(run), storySet(run));
   app.stage.setUnits([]);
   app.audio.music('map');
   const story = run.story!;

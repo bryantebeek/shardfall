@@ -9,10 +9,11 @@ import './style.css';
 import { audio } from './audio/audio';
 import {
   ARRIVAL, DAWN, DAWN_AFTER, DUSK, EMBERFALL_EVENTS, ENDING, PROLOGUE, REWIND, START, beginAttempt, here, hillScene, knightSetup, newStory, placeEnemies,
-  rewind, roadEnemies, stepsRun, storyTheme, travel,
+  rewind, roadEnemies, stepsRun, storySet, storyTheme, travel,
 } from './game/chapter1';
 import { clearSave, load, newCard, save, type NodeType, type Run } from './game/run';
 import type { AccId, ItemId } from './game/loot';
+import type { StageSet } from './render/api';
 import { createStage } from './render/stage';
 import { app } from './ui/app';
 import { battleScreen } from './ui/battle';
@@ -65,7 +66,7 @@ async function openChapter(): Promise<Run> {
   await scene(ARRIVAL);
   await scene(DUSK);
   // the shrine steps: three strokes
-  await battleScreen(stepsRun(), 'boss', ['ashsteps'], { theme: 'dusk' });
+  await battleScreen(stepsRun(), 'boss', ['ashsteps'], { theme: 'dusk', set: 'shrine' });
   const { run, memory } = rewind(beginAttempt(newStory()), START, START); // he falls on the shrine steps
   await scene(DAWN);
   await memoryCard(memory!);
@@ -89,7 +90,7 @@ async function fall(run: Run, from: number): Promise<Run> {
 
 /** a fight during the escape; false if the party falls */
 function fight(run: Run, type: NodeType, enemies: string[]) {
-  return battleScreen(run, type, enemies, { setup: knightSetup(run), theme: storyTheme(run) });
+  return battleScreen(run, type, enemies, { setup: knightSetup(run), theme: storyTheme(run), set: storySet(run) });
 }
 
 /** The escape from Emberfall, one attempt after another, until they reach the hill. */
@@ -126,7 +127,7 @@ async function playChapter(run: Run) {
   }
 }
 
-/** Dev shortcuts: ?dev=map | opening | ending | battle&enemies=ashknight | shop | event&event=mill | inn | treasure | rewards | levelup | win | lose
+/** Dev shortcuts: ?dev=map | opening | ending | battle (&set=village &theme=dusk)&enemies=ashknight | shop | event&event=mill | inn | treasure | rewards | levelup | win | lose
  *  (&memories=guard,bridge,well &cards=a,b) */
 async function devEntry(dev: string, q: URLSearchParams) {
   if (dev === 'opening') return playChapter(await openChapter());
@@ -142,7 +143,9 @@ async function devEntry(dev: string, q: URLSearchParams) {
   switch (dev) {
     case 'map': break;
     case 'ending': await scene(hillScene(run)); await scene(ENDING); await chapterComplete(run.story!); return;
-    case 'battle': await battleScreen(run, (q.get('type') as NodeType) ?? 'battle', q.get('enemies')?.split(','), { setup: knightSetup(run) }); break;
+    case 'battle': await battleScreen(run, (q.get('type') as NodeType) ?? 'battle', q.get('enemies')?.split(','), {
+      setup: knightSetup(run), set: (q.get('set') ?? undefined) as StageSet | undefined, theme: (q.get('theme') ?? undefined) as 'ruins' | 'dusk' | undefined,
+    }); break;
     case 'shop': await shopScreen(run); break;
     case 'event': await eventScreen(run, EMBERFALL_EVENTS[q.get('event') ?? 'mill']); break;
     case 'inn': await innScreen(run); break;

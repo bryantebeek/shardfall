@@ -16,6 +16,7 @@ import { refreshTopBar, topBar } from './hud';
 export function titleScreen(hasSave: boolean): Promise<'new' | 'continue'> {
   app.stage.setMode('title', 'ruins');
   app.audio.music('title');
+  app.stage.setUnits([]);
   return new Promise(resolve => {
     mount(h('div.title-screen',
       h('div.logo',
@@ -381,6 +382,8 @@ export function eventScreen(run: Run): Promise<void> {
         text.textContent = res.text;
         opts.replaceChildren();
         topSlot.replaceChildren(topBar(run));
+        // level-ups are full screens that replace this one, so the event ends with them
+        if (res.follow?.kind === 'levels') { await followUp(run, res.follow); resolve(); return; }
         if (res.follow) await followUp(run, res.follow);
         topSlot.replaceChildren(topBar(run));
         opts.append(btn('Continue', () => resolve(), 'big-btn'));
@@ -421,6 +424,7 @@ export function settings(onAbandon?: () => void) {
 
 export function endScreen(run: Run, won: boolean): Promise<void> {
   app.stage.setMode('title', won ? 'ruins' : 'boss');
+  app.stage.setUnits([]);
   app.audio.music(won ? 'title' : 'none');
   const s = run.stats;
   const mins = Math.round((Date.now() - s.startedAt) / 60000);

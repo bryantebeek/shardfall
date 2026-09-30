@@ -12,6 +12,7 @@ const vis = async sel => (await page.locator(sel).count()) > 0;
 const click = sel => page.locator(sel).first().click({ force: true, timeout: 4000 }).catch(() => {});
 const center = sel => page.evaluate(s => { const el = document.querySelector(s); if (!el) return null; const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, sel);
 const seen = new Set();
+let unhandled = 0;
 
 await page.goto('http://localhost:5320/');
 await page.waitForTimeout(1500);
@@ -58,10 +59,11 @@ async function battle() {
   await page.waitForTimeout(4000);
 }
 
-for (let step = 0; step < 80; step++) {
+try {
+for (let step = 0; step < 120; step++) {
   await page.waitForTimeout(700);
   if (await vis('.end-screen')) { await shot('end'); logs.push('END reached'); break; }
-  if (await vis('.screen:not(.leaving).battle')) { const t = await page.evaluate(() => window.__sf?.battle?.enemies.map(e => e.def).join('+')); if (!seen.has(t)) { seen.add(t); await page.waitForTimeout(3500); await shot('battle-' + t); } await battle(); continue; }
+  if (await vis('.screen:not(.leaving).battle') && await page.evaluate(() => !window.__sf?.battle?.over)) { const t = await page.evaluate(() => window.__sf?.battle?.enemies.map(e => e.def).join('+')); if (!seen.has(t)) { seen.add(t); await page.waitForTimeout(3500); await shot('battle-' + t); } await battle(); continue; }
   if (await vis('.modal .card.pickable')) { await click('.modal .card.pickable'); continue; }
   if (await vis('.modal .hero-pick-btn')) { await click('.modal .hero-pick-btn'); continue; }
   if (await vis('.screen:not(.leaving).levelup-screen')) { if (!seen.has('lv')) { seen.add('lv'); await shot('levelup'); } await click('.levelup-screen .card.pickable'); continue; }
@@ -90,6 +92,11 @@ for (let step = 0; step < 80; step++) {
     await page.waitForTimeout(1500);
     continue;
   }
+  const cls = await page.evaluate(() => [...document.querySelectorAll('.screen, .modal-back')].map(e => e.className).join(' | '));
+  logs.push('unhandled state: ' + cls);
+  await shot('unhandled');
+  if (++unhandled > 15) break;
 }
+} catch (e) { logs.push('HARNESS ERROR ' + e.message); await shot('harness-error').catch(() => {}); }
 console.log(logs.join('\n'));
 await browser.close();

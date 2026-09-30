@@ -35,13 +35,13 @@ export const THEMES: Record<Theme, Palette> = {
   depths: {
     skyTop: C(0x03050c), skyHorizon: C(0x243060), skyBottom: C(0x0a0d1c), sun: C(0x6a80ff),
     fog: C(0x18203c), fogDensity: 0.022,
-    hemiSky: C(0x5a6cc0), hemiGround: C(0x100c1a), hemi: 1.0,
-    key: C(0xb8c4ff), keyI: 2.2, fill: C(0x8050ff), fillI: 1.0,
+    hemiSky: C(0x5a6cc0), hemiGround: C(0x100c1a), hemi: 1.25,
+    key: C(0xb8c4ff), keyI: 2.9, fill: C(0x8050ff), fillI: 1.0,
     torch: C(0xff8040), torchI: 13,
     crystalA: C(0x5a7cff), crystalB: C(0xb070ff), crystalI: 14,
     rune: C(0x9a80ff), rays: C(0x8ab0ff), raysI: 0.1,
     mote: C(0x9ad0ff),
-    lift: C(0x0c0c28), gain: C(0xe8ecff), sat: 1.05, exposure: 1.05,
+    lift: C(0x0c0c28), gain: C(0xe8ecff), sat: 1.05, exposure: 1.12,
   },
   boss: {
     skyTop: C(0x0c0208), skyHorizon: C(0x7a1430), skyBottom: C(0x14050c), sun: C(0xff5070),

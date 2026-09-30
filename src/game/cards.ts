@@ -103,8 +103,8 @@ const defs: CardDef[] = [
   { id: 'prism', name: 'Prismatic Ray', hero: 'bmage', cost: 2, type: 'attack', rarity: 'rare', target: 'enemy', el: 'fire', art: 'prism',
     text: 'Deal {D} Fire, {D} Ice and {D} Thunder damage.', v: { D: [6, 8] },
     play: (b, c) => { b.attack(c, c.D, 'fire'); b.attack(c, c.D, 'ice'); b.attack(c, c.D, 'thunder'); } },
-  { id: 'flare', name: 'Flare', hero: 'bmage', cost: 3, type: 'attack', rarity: 'rare', target: 'enemy', el: 'fire', art: 'flare',
-    text: 'Deal {D} Fire damage.', v: { D: [30, 40] }, play: (b, c) => b.attack(c, c.D, 'fire') },
+  { id: 'flare', name: 'Flare', hero: 'bmage', cost: 2, type: 'attack', rarity: 'rare', target: 'enemy', el: 'fire', art: 'flare',
+    text: 'Deal {D} Fire damage.', v: { D: [24, 32] }, play: (b, c) => b.attack(c, c.D, 'fire') },
 
   // ───────────── White Mage ─────────────
   { id: 'cure', name: 'Cure', hero: 'wmage', cost: 1, type: 'skill', rarity: 'starter', target: 'ally', art: 'cure', fx: 'heal',
@@ -199,6 +199,6 @@ export const KEYWORDS: Record<string, string> = {
   Regen: 'Heals HP equal to Regen at the start of turn, then Regen decreases by 1.',
   Thorns: 'Attackers take this much damage.',
   Exhaust: 'Removed until the end of combat.',
-  Action: 'Each hero has one Action per turn. Cards that cost time spend their hero\'s Action; a hero with none left can only play Swift cards.',
+  Action: 'Each hero gains 1 Action per turn and can hold 2. A card costs as many Actions as it has dots. Hold a hero for a turn to afford a 2-dot card, or to act twice.',
   Ethereal: 'Exhausted if still in hand at the end of your turn.',
 };

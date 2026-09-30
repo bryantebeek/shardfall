@@ -29,7 +29,7 @@ const SWIFT_SVG = '<svg viewBox="0 0 20 16"><path d="M2 2l6 6-6 6M10 2l6 6-6 6"/
 /** How much of the hero's time a card takes: Swift (none), one Action, or Heavy (the Action and their next turn(s)). */
 function timeBadge(cost: number): HTMLElement {
   if (cost === 0) return h('div.card-time.swift', { 'data-tip': '<b>Swift</b><br>Doesn\'t use the hero\'s Action.', html: SWIFT_SVG });
-  const tip = cost > 1 ? `<b>Heavy</b><br>Uses the hero's Action, and they sit out their next ${cost > 2 ? `${cost - 1} turns` : 'turn'}.` : '<b>Action</b><br>Uses this hero\'s Action for the turn.';
+  const tip = cost > 1 ? `<b>${cost} Actions</b><br>Hold this hero for a turn to save up for it.` : '<b>1 Action</b><br>A hero gains 1 Action each turn, and can hold 2.';
   return h('div.card-time' + (cost > 1 ? '.heavy' : ''), { 'data-tip': tip }, Array.from({ length: cost }, () => h('i')));
 }
 

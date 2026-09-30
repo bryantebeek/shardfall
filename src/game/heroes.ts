@@ -16,7 +16,8 @@ export const HEROES: Record<HeroId, HeroDef> = {
   wmage: { id: 'wmage', name: 'Seren', job: 'White Mage', hp: 44, hpPerLevel: 5, color: '#ffd97a', blurb: 'Keeper of the old light. Heals, shields and returns the fallen.' },
 };
 
-/** Each living hero gets one Action per turn; most cards spend their hero's Action. */
+/** Each living hero gains one Action per turn and can hold up to two; a card's dots are its cost in Actions. */
+export const MAX_ACTIONS = 2;
 export const HAND_SIZE = 6;
 export const MAX_HAND = 10;
 

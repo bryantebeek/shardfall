@@ -2,7 +2,7 @@
 // presentation layer plays back (animations, numbers, sounds). No DOM here.
 import { cardCost, cardDef, cardExhausts, cardVal, type CardDef } from './cards';
 import { ENEMIES, type EnemyDef, type Move } from './enemies';
-import { HAND_SIZE, HEROES, MAX_HAND } from './heroes';
+import { HAND_SIZE, HEROES, MAX_ACTIONS, MAX_HAND } from './heroes';
 import { ITEMS, type AccId, type ItemId } from './loot';
 import { Rng } from './rng';
 import type { CardInst, Element, HeroId, Intent, SpriteId, StatusId, Statuses } from './types';
@@ -11,10 +11,8 @@ import type { CastKind } from '../render/api';
 export interface Fighter { id: string; name: string; hp: number; maxHp: number; block: number; st: Statuses }
 export interface HeroF extends Fighter {
   side: 'hero'; id: HeroId;
-  /** Actions left this turn (one per turn; cards that cost 1+ spend it) */
+  /** Actions held: one more each turn, up to MAX_ACTIONS; unused ones carry over */
   acts: number;
-  /** turns still to sit out after a Heavy card */
-  winded: number;
 }
 export interface EnemyF extends Fighter {
   side: 'enemy';
@@ -106,7 +104,7 @@ export class Battle {
     this.uid = init.uidStart;
     this.acc = new Set(init.accessories);
     this.items = [...init.items];
-    this.heroes = init.heroes.map(h => ({ side: 'hero', id: h.id, name: HEROES[h.id].name, hp: h.hp, maxHp: h.maxHp, block: 0, st: {}, acts: 0, winded: 0 }));
+    this.heroes = init.heroes.map(h => ({ side: 'hero', id: h.id, name: HEROES[h.id].name, hp: h.hp, maxHp: h.maxHp, block: 0, st: {}, acts: 0 }));
     this.enemies = init.enemies.map((id, i) => this.makeEnemy(ENEMIES[id], i, init.hpScale ?? 1));
     this.dmgScale = init.hpScale ?? 1;
     this.drawPile = this.rng.shuffle(init.deck.map(c => ({ ...c })));
@@ -149,9 +147,9 @@ export class Battle {
     if (this.over || this.phase !== 'player') return { ok: false, reason: 'Not your turn' };
     if (d.unplayable) return { ok: false, reason: 'Unplayable' };
     if (d.hero && this.hero(d.hero).hp <= 0) return { ok: false, reason: `${HEROES[d.hero].name} is KO'd` };
-    if (d.hero && cardCost(c) > 0 && this.hero(d.hero).acts < 1) {
+    if (d.hero && cardCost(c) > this.hero(d.hero).acts) {
       const h = this.hero(d.hero);
-      return { ok: false, reason: h.winded ? `${h.name} is still recovering` : `${h.name} has already acted` };
+      return { ok: false, reason: h.acts ? `${h.name} needs ${cardCost(c)} Actions` : `${h.name} has no Actions left` };
     }
     if (d.target === 'deadAlly' && !this.heroes.some(h => h.hp <= 0)) return { ok: false, reason: 'No KO\'d ally' };
     return { ok: true };
@@ -198,7 +196,7 @@ export class Battle {
     const target = targetId ? this.unit(targetId) : undefined;
 
     const cost = cardCost(c);
-    if (cost > 0) { owner.acts--; owner.winded += cost - 1; }
+    owner.acts -= cost;
     this.hand.splice(this.hand.indexOf(c), 1);
     this.stats.cardsPlayed++;
     this.emit({ t: 'play', card: c, owner: owner.id });
@@ -252,7 +250,7 @@ export class Battle {
     this.turn++;
     this.emit({ t: 'turn', side: 'player', turn: this.turn });
     for (const h of this.aliveHeroes()) {
-      if (h.winded > 0) { h.winded--; h.acts = 0; } else h.acts = 1;
+      h.acts = Math.min(MAX_ACTIONS, h.acts + 1);
     }
     if (this.turn === 1 && this.acc.has('etherStone')) this.ready(1);
     this.emit({ t: 'actions' });
@@ -427,12 +425,11 @@ export class Battle {
     for (const el of e.weak) if (!e.known.includes(el)) { e.known.push(el); this.emit({ t: 'reveal', id, el }); }
   }
 
-  /** Give back n Actions: to heroes who have none left (the given hero first), else to whoever is standing. */
+  /** Give back n Actions: the given hero first, then whoever holds the fewest (never above the cap). */
   ready(n: number, prefer?: HeroId) {
     for (let i = 0; i < n; i++) {
-      const alive = this.aliveHeroes().sort((a, b) => (a.id === prefer ? -1 : b.id === prefer ? 1 : 0));
-      const h = alive.find(x => x.acts < 1) ?? alive[0];
-      if (h) h.acts++;
+      const room = this.aliveHeroes().filter(x => x.acts < MAX_ACTIONS).sort((a, b) => (a.id === prefer ? -1 : b.id === prefer ? 1 : a.acts - b.acts));
+      if (room[0]) room[0].acts++;
     }
     this.emit({ t: 'actions' });
   }

@@ -22,21 +22,26 @@ describe('battle', () => {
     expect(b.heroes.map(h => h.acts)).toEqual([1, 1, 1]);
   });
 
-  it('a hero acts once per turn; Swift cards are free; Heavy cards cost the next turn too', () => {
-    const b = mk(['slash', 'slash', 'scan', 'bulwark', 'fire', 'fire', 'slash', 'slash', 'slash', 'slash'], ['ogre']);
+  it('each hero gains an Action a turn and can hold two; a card costs its dots; Swift is free', () => {
+    const b = mk(Array(12).fill('slash'), ['ogre']);
+    const give = (...ids: string[]) => { b.hand = ids.map((id, i) => ({ uid: `t${b.turn}-${i}`, id, upgraded: false })); };
     const play = (id: string, t?: string) => b.play(b.hand.find(c => c.id === id)!.uid, t);
-    b.hand = [{ uid: 'a', id: 'slash', upgraded: false }, { uid: 'b', id: 'slash', upgraded: false }, { uid: 'c', id: 'scan', upgraded: false }, { uid: 'd', id: 'bulwark', upgraded: false }];
+    const can = (id: string) => b.canPlay(b.hand.find(c => c.id === id)!).ok;
+    give('slash', 'bulwark', 'scan');
+    expect(can('bulwark')).toBe(false); // 2 dots, Aldric holds 1
     play('slash', 'e0');
     expect(b.hero('knight').acts).toBe(0);
-    expect(b.canPlay(b.hand.find(c => c.id === 'slash')!).ok).toBe(false); // Aldric has acted
-    expect(b.canPlay(b.hand.find(c => c.id === 'scan')!).ok).toBe(true); // Swift: Lyra's Action untouched
+    expect(can('scan')).toBe(true); // Swift
     play('scan', 'e0');
     expect(b.hero('bmage').acts).toBe(1);
-    b.hero('knight').acts = 1;
-    play('bulwark', 'knight'); // Heavy (cost 2): Aldric sits out next turn
     b.endTurn();
+    expect(b.heroes.map(h => h.acts)).toEqual([1, 2, 2]); // Lyra and Seren held theirs
+    b.endTurn();
+    expect(b.heroes.map(h => h.acts)).toEqual([2, 2, 2]); // never more than two
+    give('bulwark', 'slash');
+    play('bulwark', 'knight');
     expect(b.hero('knight').acts).toBe(0);
-    expect(b.hero('bmage').acts).toBe(1);
+    expect(can('slash')).toBe(false);
   });
 
   it('every Break pays Crystal Shards', () => {

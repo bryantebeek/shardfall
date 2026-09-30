@@ -1,7 +1,7 @@
 import { elementIconUrl, intentIconUrl, portraitUrl, uiIconUrl } from '../art';
 import { Battle, type EnemyF, type Ev, type HeroF } from '../game/battle';
 import { cardCost, cardDef } from '../game/cards';
-import { HEROES } from '../game/heroes';
+import { HEROES, MAX_ACTIONS } from '../game/heroes';
 import { ITEMS } from '../game/loot';
 import { afterBattle, battleInit, encounter, theme, type NodeType, type Run } from '../game/run';
 import type { CardInst, Element, HeroId, Intent, StatusId } from '../game/types';
@@ -48,7 +48,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[],
   const endBtn = btn(h('span', 'End Turn'), () => endTurn(), 'end-turn');
   endBtn.dataset.tip = '<b>End Turn</b><br>Shortcut: <b>E</b>. Number keys pick cards.';
   // first-time guidance, until the first card of the run is played
-  const hint = run.stats.cardsPlayed === 0 ? h('div.battle-hint', 'Each hero acts once a turn · Drag a card onto a target · Break enemies for Shards') : null;
+  const hint = run.stats.cardsPlayed === 0 ? h('div.battle-hint', 'Each hero gains an Action a turn (hold up to 2) · Drag a card onto a target · Break enemies for Shards') : null;
   const moveBanner = h('div.move-banner');
   const topbarSlot = h('div');
   const root = mount(h('div.battle', topbarSlot, units, moveBanner, h('div.bottom-shade'), hint, hand, drawPile, discardPile, exhaustPile, endBtn, arrow.svg));
@@ -106,7 +106,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[],
     const uh: UnitHud = { el: h('div.unit.' + u.side, { 'data-id': u.id }, hit, plate), hit, hp, lag, hpText, block, statuses, shown: { hp: u.hp, block: u.block } };
     if (!isEnemy) {
       // this hero's Action for the turn
-      uh.act = h('div.act-pip');
+      uh.act = h('div.act-pips', Array.from({ length: MAX_ACTIONS }, () => h('i')));
       plate.querySelector('.plate-name')!.prepend(uh.act);
     }
     if (isEnemy) {
@@ -203,18 +203,13 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[],
     refreshPlayable();
   }
 
-  /** each hero's Action: ready, spent, or recovering from a Heavy card */
-  function actState(hr: HeroF): { cls: string; tip: string } {
-    if (hr.hp <= 0) return { cls: 'ko', tip: 'KO\'d' };
-    if (hr.acts > 0) return { cls: 'ready', tip: `<b>${hr.name} is ready</b><br>One Action this turn.` };
-    if (hr.winded) return { cls: 'winded', tip: `<b>${hr.name} is recovering</b><br>Back in ${hr.winded + 1} turn${hr.winded ? 's' : ''}. Swift cards still work.` };
-    return { cls: 'spent', tip: `<b>${hr.name} has acted</b><br>Only Swift cards until next turn.` };
-  }
+  /** each hero's Actions: two slots, filled with what they hold */
   function setActs() {
     for (const hr of b.heroes) {
-      const el = hud.get(hr.id)!.act!, st = actState(hr);
-      el.className = 'act-pip ' + st.cls;
-      el.dataset.tip = st.tip;
+      const el = hud.get(hr.id)!.act!;
+      el.classList.toggle('ko', hr.hp <= 0);
+      el.dataset.tip = `<b>${hr.name}: ${hr.acts} of ${MAX_ACTIONS} Actions</b><br>+1 each turn. Hold one to afford a 2-dot card, or to act twice.`;
+      el.querySelectorAll('i').forEach((pip, k) => pip.classList.toggle('on', k >= MAX_ACTIONS - hr.acts)); // fill from the right
     }
   }
 

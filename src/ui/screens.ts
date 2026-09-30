@@ -29,7 +29,7 @@ export function titleScreen(hasSave: boolean): Promise<'new' | 'continue'> {
         btn('New Journey', () => resolve('new'), 'title-btn' + (hasSave ? '' : ' primary')),
         btn('Settings', () => settings(), 'title-btn'),
       ),
-      h('div.title-foot', 'Drag cards onto targets · Hit weaknesses to BREAK · Unleash Limit Breaks'),
+      h('div.title-foot', '“Can you create a Slay the Spired inspired card game with a JRPG twist and look/feel? It should be AAA quality.”'),
     ));
   });
 }

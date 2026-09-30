@@ -48,6 +48,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   let time = 0, gtime = 0;
   let stopT = 0, slowT = 0, slowScale = 1;
   let trauma = 0;
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches; // no camera shake or screen flashes
   const flashC = new THREE.Color(0, 0, 0);
   let bloomPulse = 0;
   let limitK = 0, limitUnit: Unit | null = null;
@@ -307,6 +308,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   }
 
   function flash(color = '#ffffff') {
+    if (calm) return;
     const c = new THREE.Color(color);
     real.to(0.28, (k) => { flashC.copy(c).multiplyScalar(0.6 * (1 - k)); }, ease.outQuad);
   }
@@ -403,7 +405,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       r.pos.lerp(pos, k); r.target.lerp(c.clone().add(new THREE.Vector3(1.4, 0.2, 0)), k); r.fov = lerp(r.fov, 28, k);
     }
     trauma = Math.max(0, trauma - rdt * 1.6);
-    const sh = trauma * trauma * 0.45;
+    const sh = calm ? 0 : trauma * trauma * 0.45;
     camera.position.copy(r.pos).add(tmp.set(Math.sin(time * 41) * sh, Math.sin(time * 37 + 1) * sh, 0));
     camTarget.copy(r.target);
     camera.lookAt(camTarget);

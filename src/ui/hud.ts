@@ -4,10 +4,10 @@ import { ACCESSORIES, ITEMS } from '../game/loot';
 import { ROWS, clearSave, type Run } from '../game/run';
 import { app, btn } from './app';
 import { h, img } from './dom';
-import { deckView, settings } from './screens';
+import { deckView, settings, useItemOutside } from './screens';
 
 export interface TopBarOpts {
-  /** clicking an item slot (battle uses this for targeting); default opens nothing */
+  /** clicking an item slot (battle uses this for targeting); default uses the item outside battle */
   onItem?: (slot: number) => void;
   items?: (string | null)[];
   hideParty?: boolean;
@@ -15,6 +15,8 @@ export interface TopBarOpts {
 
 export function topBar(run: Run, o: TopBarOpts = {}): HTMLElement {
   const items = o.items ?? run.items;
+  const onItem = o.onItem ?? ((slot: number) => useItemOutside(run, slot));
+  const inBattle = !!o.items;
   const row = run.at === null ? 0 : run.map.find(n => n.id === run.at)!.row + 1;
   const xpPct = Math.round((run.xp / xpToNext(run.level)) * 100);
   return h('div.topbar',
@@ -29,9 +31,9 @@ export function topBar(run: Run, o: TopBarOpts = {}): HTMLElement {
     h('div.tb-gold', { 'data-tip': '<b>Gold</b>' }, img(uiIconUrl('gold')), h('span', run.gold)),
     h('div.tb-items', items.map((id, i) => {
       const it = id ? ITEMS[id as keyof typeof ITEMS] : null;
-      const slot = h('div.tb-item' + (it ? '' : '.empty'), { 'data-tip': it ? `<b>${it.name}</b><br>${it.text}${o.onItem ? '' : it.combatOnly ? '<br><i>Usable in battle.</i>' : '<br><i>Click to use.</i>'}` : 'Empty item slot' },
+      const slot = h('div.tb-item' + (it ? '' : '.empty'), { 'data-tip': it ? `<b>${it.name}</b><br>${it.text}${it.combatOnly && !inBattle ? '<br><i>Usable in battle.</i>' : '<br><i>Click to use.</i>'}` : 'Empty item slot' },
         it ? img(uiIconUrl(it.icon)) : null);
-      if (it && o.onItem) slot.addEventListener('click', () => o.onItem!(i));
+      if (it) slot.addEventListener('click', () => onItem(i));
       return slot;
     })),
     h('div.tb-accs', run.acc.map(a => h('div.tb-acc', { 'data-tip': `<b>${ACCESSORIES[a].name}</b><br>${ACCESSORIES[a].text}` }, img(accessoryIconUrl(a))))),

@@ -7,7 +7,7 @@ import {
   restHeal, shopStock, treasure, upgradeCard, type EventFollowUp, type NodeType, type Run,
 } from '../game/run';
 import type { CardArt, CardInst, HeroId } from '../game/types';
-import { app, banner, btn, modal, mount, toast } from './app';
+import { app, banner, btn, confirmBtn, modal, mount, toast } from './app';
 import { cardEl } from './card';
 import { h, img, wait } from './dom';
 import { refreshTopBar, topBar } from './hud';
@@ -100,7 +100,7 @@ export function mapScreen(run: Run, theme: 'ruins' | 'depths' | 'boss'): Promise
     });
     const scroller = h('div.map-scroll', h('div.map-canvas', { style: `height:${height}px; width:${MAP_W}px` }, svg as unknown as HTMLElement, nodes));
     const root = mount(h('div.map-screen',
-      topBar(run, { onItem: slot => useItemOutside(run, slot) }),
+      topBar(run),
       h('div.map-title', h('div.map-title-name', 'Shardfall Spire'), h('div.map-title-sub', 'Choose your path')),
       h('div.map-frame', scroller),
       h('div.map-legend', h('div.legend-title', 'Legend'), (Object.keys(NODE_NAMES) as NodeType[]).map(t => h('div.legend-row', img(uiIconUrl(t)), NODE_NAMES[t]))),
@@ -113,20 +113,20 @@ export function mapScreen(run: Run, theme: 'ruins' | 'depths' | 'boss'): Promise
   });
 }
 
-function useItemOutside(run: Run, slot: number) {
+export function useItemOutside(run: Run, slot: number) {
   const id = run.items[slot];
   if (!id) return;
   const it = ITEMS[id];
   if (it.combatOnly) { toast(`${it.name} can only be used in battle`); return; }
   const close = modal(h('div.picker',
     h('h3', `Use ${it.name} on...`),
-    h('div.hero-pick', run.heroes.map(hr => btn(h('div.hero-pick-inner', img(portraitUrl(hr.id)), h('div', HEROES[hr.id].name), h('small', `${hr.hp} / ${hr.maxHp}`)), () => {
+    h('div.hero-pick', run.heroes.map(hr => { const b = btn(h('div.hero-pick-inner', img(portraitUrl(hr.id)), h('div', HEROES[hr.id].name), h('small', `${hr.hp} / ${hr.maxHp}`)), () => {
       healHero(run, hr.id, id === 'elixir' ? hr.maxHp : 20);
       run.items[slot] = null;
       app.audio.sfx('heal');
       close();
-      refreshTopBar(run, { onItem: s => useItemOutside(run, s) });
-    }, 'hero-pick-btn'))),
+      refreshTopBar(run);
+    }, 'hero-pick-btn'); if (hr.hp >= hr.maxHp) b.setAttribute('disabled', ''); return b; })),
   ));
 }
 
@@ -163,7 +163,7 @@ export async function rewardsScreen(run: Run, type: NodeType): Promise<void> {
         h('h2.window-title', type === 'elite' ? 'Elite Vanquished' : 'Spoils of Battle'),
         r.xp ? xpBox : null,
         list,
-        btn('Continue', () => resolve(), 'big-btn'))));
+        confirmBtn('Continue', 'Leave rewards behind?', () => resolve(), 'big-btn', () => !!list.querySelector('.reward-row:not(.taken)')))));
     // animate the xp bar filling (and wrapping on level up)
     setTimeout(() => {
       const fill = xpBox.querySelector('.xp-fill') as HTMLElement;
@@ -264,7 +264,7 @@ export function innScreen(run: Run): Promise<void> {
     const heal = run.heroes.map(hr => Math.min(hr.maxHp - hr.hp, Math.round(hr.maxHp * 0.3)));
     const choices = h('div.inn-choices',
       btn(h('div.inn-choice', img(cardArtUrl('cure'), 'inn-art'), h('h3', 'Rest'), h('p', 'Heal all heroes 30% of their max HP.'),
-        h('div.inn-preview', run.heroes.map((hr, i) => h('div', img(portraitUrl(hr.id)), h('b', `+${heal[i]}`))))), () => {
+        heal.some(Boolean) ? h('div.inn-preview', run.heroes.map((hr, i) => h('div', img(portraitUrl(hr.id)), h('b', `+${heal[i]}`)))) : h('p.hint', 'The party is already at full health.')), () => {
         restHeal(run);
         app.audio.sfx('heal');
         done('The party sleeps soundly by the fire. Wounds mend.');
@@ -417,7 +417,7 @@ export function settings(onAbandon?: () => void) {
   modal(h('div.settings',
     h('h3.window-title', 'Settings'),
     slider('master', 'Master', 0.8), slider('music', 'Music', 0.55), slider('sfx', 'Effects', 0.8),
-    onAbandon ? btn('Abandon Run', onAbandon, 'danger') : null,
+    onAbandon ? confirmBtn('Abandon Run', 'Really abandon? Click again', onAbandon, 'danger') : null,
     h('p.settings-help', 'Controls: drag a card onto a target (or click a card, then a target). Number keys select cards, E ends the turn, Esc / right-click cancels.'),
   ));
 }

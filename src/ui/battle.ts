@@ -46,9 +46,12 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
   discardPile.addEventListener('click', () => deckView(b.discard, 'Discard Pile'));
   exhaustPile.addEventListener('click', () => deckView(b.exhaust, 'Exhausted'));
   const endBtn = btn(h('span', 'End Turn'), () => endTurn(), 'end-turn');
+  endBtn.dataset.tip = '<b>End Turn</b><br>Shortcut: <b>E</b>. Number keys pick cards.';
+  // first-time guidance, until the first card of the run is played
+  const hint = run.stats.cardsPlayed === 0 ? h('div.battle-hint', 'Drag a card onto a target to play it · Hover anything for details') : null;
   const moveBanner = h('div.move-banner');
   const topbarSlot = h('div');
-  const root = mount(h('div.battle', topbarSlot, units, moveBanner, h('div.bottom-shade'), hand, energyOrb, limitBox, drawPile, discardPile, exhaustPile, endBtn, arrow.svg));
+  const root = mount(h('div.battle', topbarSlot, units, moveBanner, h('div.bottom-shade'), hint, hand, energyOrb, limitBox, drawPile, discardPile, exhaustPile, endBtn, arrow.svg));
 
   let busy = true;
   let finish: (won: boolean) => void = () => {};
@@ -228,7 +231,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
   let hoverCard: string | null = null;
   function layout() {
     const n = b.hand.length;
-    const spacing = Math.min(170, 980 / Math.max(1, n));
+    const spacing = Math.min(212, 980 / Math.max(1, n - 1)); // wide enough that small hands don't cover each other's text
     const hi = b.hand.findIndex(c => c.uid === hoverCard);
     b.hand.forEach((c, i) => {
       const el = cardEls.get(c.uid);
@@ -423,6 +426,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
     const evs = b.play(uid, target);
     if (!evs.length) { busy = false; el.classList.remove('aiming'); layout(); return; }
     cardEls.delete(uid);
+    hint?.classList.add('gone');
     el.classList.remove('aiming', 'will-play');
     el.classList.add('played');
     audio.sfx('cardPlay');

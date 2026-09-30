@@ -48,6 +48,17 @@ export function toast(text: string) {
   setTimeout(() => el.remove(), 2100);
 }
 
+/** Button that asks for a second click (showing `armed`) before running onClick, when needsConfirm() is true. */
+export function confirmBtn(label: string, armed: string, onClick: () => void, cls = '', needsConfirm = () => true): HTMLElement {
+  const b = btn(label, () => {
+    if (b.classList.contains('armed') || !needsConfirm()) return onClick();
+    b.classList.add('armed');
+    b.textContent = armed;
+    setTimeout(() => { b.classList.remove('armed'); b.textContent = label; }, 3000);
+  }, cls);
+  return b;
+}
+
 /** Button with hover/click sounds. */
 export function btn(label: string | HTMLElement, onClick: () => void, cls = ''): HTMLElement {
   const b = h('button.btn' + (cls ? '.' + cls.split(' ').join('.') : ''), label);

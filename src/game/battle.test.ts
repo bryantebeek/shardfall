@@ -118,3 +118,34 @@ describe('run', () => {
     expect(run.heroes[0].maxHp).toBe(hp + 6);
   });
 });
+
+import { battleInit, encounter, enterNode } from './run';
+import { ENEMIES } from './enemies';
+
+describe('difficulty scaling', () => {
+  const atRow = (row: number) => { const run = newRun(3); const n = run.map.find(x => x.row === row); if (n) enterNode(run, n.id); return run; };
+
+  it('enemy HP and damage scale +4% per floor; boss is unscaled', () => {
+    expect(encounter(atRow(0), 'battle').hpScale).toBeCloseTo(1);
+    expect(encounter(atRow(10), 'battle').hpScale).toBeCloseTo(1.4);
+    expect(encounter(atRow(10), 'elite').hpScale).toBeCloseTo(1.4);
+    expect(encounter(atRow(14), 'boss').hpScale).toBe(1);
+  });
+
+  it('scaled HP lands inside the scaled range and intents show scaled damage', () => {
+    for (const row of [0, 5, 12]) {
+      const run = atRow(row);
+      const init = { ...battleInit(run, { enemies: ['skeleton'], hpScale: 1 + row * 0.04 }) };
+      const b = new Battle(init);
+      b.start();
+      const e = b.enemies[0], d = ENEMIES.skeleton, s = 1 + row * 0.04;
+      expect(e.maxHp).toBeGreaterThanOrEqual(Math.round(d.hp[0] * s));
+      expect(e.maxHp).toBeLessThanOrEqual(Math.round(d.hp[1] * s));
+      const m = b.moveOf(e);
+      if (m.dmg !== undefined) {
+        const t = b.intent(e).target ? b.hero(b.intent(e).target!) : undefined;
+        expect(b.intent(e).dmg).toBe(Math.floor(Math.round(m.dmg * s) * (t?.st.vuln ? 1.5 : 1)));
+      }
+    }
+  });
+});

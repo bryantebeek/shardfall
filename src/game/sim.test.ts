@@ -65,17 +65,21 @@ function botTurn(b: Battle) {
   if (!b.over) b.endTurn();
 }
 
-const lost: Record<string, number[]> = {};
-function fight(run: Run, type: NodeType, row: number): { won: boolean; turns: number } {
+interface FightStat { won: boolean; turns: number; lostPct: number; kos: number; enemyHp: number; level: number; partyMax: number }
+
+function fight(run: Run, type: NodeType, row: number): FightStat {
   const before = run.heroes.reduce((s, h) => s + h.hp, 0);
+  const partyMax = run.heroes.reduce((s, h) => s + h.maxHp, 0);
   run.at = run.map.find(n => n.row === row)?.id ?? null;
   const b = new Battle(battleInit(run, encounter(run, type)));
+  const enemyHp = b.enemies.reduce((s, e) => s + e.maxHp, 0);
   b.start();
-  while (!b.over && b.turn < 40) botTurn(b);
+  let kos = 0;
+  while (!b.over && b.turn < 40) { const alive = b.aliveHeroes().length; botTurn(b); kos += Math.max(0, alive - b.aliveHeroes().length); }
   const endHp = b.heroes.reduce((s, h) => s + Math.max(0, h.hp), 0);
-  (lost[`${type}@${row}`] ??= []).push(before - endHp);
+  const level = run.level;
   afterBattle(run, b);
-  return { won: b.over === 'win', turns: b.turn };
+  return { won: b.over === 'win', turns: b.turn, lostPct: (before - endHp) / partyMax, kos, enemyHp, level, partyMax };
 }
 
 const ACT: [NodeType, number][] = [
@@ -84,39 +88,40 @@ const ACT: [NodeType, number][] = [
 ];
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
+const avg = (a: number[]) => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
 
 describe.skipIf(!env.SIM)('balance sim', () => {
   it('plays acts', () => {
     const N = Number(env.SIM_N ?? 60);
-    const deaths: Record<string, number> = {};
-    const hpAfter: Record<string, number[]> = {};
-    let wins = 0, bossTurns = 0;
+    const stats = new Map<string, FightStat[]>();
+    let wins = 0;
     for (let i = 0; i < N; i++) {
       const run = newRun(1000 + i);
       const r = new Rng(i);
-      let alive = true;
       for (const [type, row] of ACT) {
         if (type === 'inn') {
           if (run.heroes.some(h => h.hp < h.maxHp * 0.6)) restHeal(run); else { const u = upgradable(run); if (u.length) upgradeCard(run, r.pick(u).uid); }
           continue;
         }
         const res = fight(run, type, row);
-        const key = `${type}@${row}`;
-        (hpAfter[key] ??= []).push(run.heroes.reduce((s, h) => s + h.hp, 0));
-        if (!res.won) { deaths[key] = (deaths[key] ?? 0) + 1; alive = false; break; }
-        if (type === 'boss') { wins++; bossTurns += res.turns; break; }
+        const key = `${type === 'battle' ? 'normal' : type} f${row + 1}`;
+        if (!stats.has(key)) stats.set(key, []);
+        stats.get(key)!.push(res);
+        if (!res.won) break;
+        if (type === 'boss') { wins++; break; }
         const rw = battleRewards(run, type);
         run.gold += rw.gold;
         if (rw.cards.length && r.chance(0.7)) run.deck.push(newCard(run, rw.cards[r.int(rw.cards.length)]));
         const ups = gainXp(run, rw.xp);
         for (let u = 0; u < ups; u++) run.deck.push(newCard(run, r.pick(levelUpChoices(run))));
       }
-      void alive;
     }
-    console.log(`\nwin rate ${(wins / N * 100).toFixed(0)}%  avg boss turns ${(bossTurns / Math.max(1, wins)).toFixed(1)}`);
-    console.log('deaths by fight:', deaths);
-    console.log('avg party hp after fight:', Object.fromEntries(Object.entries(hpAfter).map(([k, v]) => [k, Math.round(v.reduce((a, b) => a + b, 0) / v.length)])));
-    console.log('avg hp lost in fight:', Object.fromEntries(Object.entries(lost).map(([k, v]) => [k, Math.round(v.reduce((a, b) => a + b, 0) / v.length)])));
+    const rows = [...stats].map(([k, v]) => {
+      const died = v.filter(x => !x.won).length;
+      return `${k.padEnd(12)} ${String(v.length).padStart(5)} ${(100 * (1 - died / v.length)).toFixed(0).padStart(6)}% ${avg(v.map(x => x.level)).toFixed(1).padStart(6)} ${Math.round(avg(v.map(x => x.partyMax))).toString().padStart(8)} ${Math.round(avg(v.map(x => x.enemyHp))).toString().padStart(8)} ${avg(v.map(x => x.turns)).toFixed(1).padStart(6)} ${(100 * avg(v.map(x => x.lostPct))).toFixed(0).padStart(7)}% ${avg(v.map(x => x.kos)).toFixed(2).padStart(6)}`;
+    });
+    console.log(`\nruns ${N}   win rate ${(wins / N * 100).toFixed(0)}%\n` +
+      'fight        reach  survive  lvl  partyMax  enemyHP  turns  hpLost    KOs\n' + rows.join('\n'));
     void CARDS; void ({} as EnemyF);
-  });
+  }, 600_000);
 });

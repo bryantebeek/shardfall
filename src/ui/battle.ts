@@ -209,7 +209,14 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[],
       const el = hud.get(hr.id)!.act!;
       el.classList.toggle('ko', hr.hp <= 0);
       el.dataset.tip = `<b>${hr.name}: ${hr.acts} of ${MAX_ACTIONS} Actions</b><br>+1 each turn. Hold one to afford a 2-dot card, or to act twice.`;
-      el.querySelectorAll('i').forEach((pip, k) => pip.classList.toggle('on', k >= MAX_ACTIONS - hr.acts)); // fill from the right
+      // pips fill from the right; a pip that changes plays its fill or use animation
+      el.querySelectorAll('i').forEach((pip, k) => {
+        const on = k >= MAX_ACTIONS - hr.acts;
+        if (on === pip.classList.contains('on')) return;
+        pip.classList.toggle('on', on);
+        pip.classList.remove('fill', 'use'); void pip.offsetWidth;
+        pip.classList.add(on ? 'fill' : 'use');
+      });
     }
   }
 

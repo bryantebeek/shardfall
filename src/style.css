@@ -659,3 +659,10 @@ button { font: inherit; color: inherit; }
 .act-pips.ko { display: none; }
 .act-pips i { width: 12px; height: 12px; border-radius: 50%; background: #1e1a2a; box-shadow: inset 0 0 0 2px #5a5468; }
 .act-pips i.on { background: radial-gradient(circle at 35% 30%, #fffbe0, #ffd05a 55%, #b8701f); box-shadow: 0 0 8px #ffd05a; }
+.act-pips i { position: relative; }
+.act-pips i.fill { animation: pip-fill 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+@keyframes pip-fill { 0% { transform: scale(0.2); filter: brightness(2.5); } 60% { transform: scale(1.5); } 100% { transform: scale(1); } }
+.act-pips i.use { animation: pip-use 0.45s ease-out both; }
+@keyframes pip-use { 0% { transform: scale(1.4); background: #fff6c0; box-shadow: 0 0 14px #ffd05a; } 100% { transform: scale(1); } }
+.act-pips i.use::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid #ffd05a; animation: pip-ring 0.5s ease-out forwards; }
+@keyframes pip-ring { from { transform: scale(1); opacity: 1; } to { transform: scale(2.6); opacity: 0; } }

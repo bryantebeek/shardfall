@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sim": "SIM=1 vitest run src/game/sim.test.ts"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",

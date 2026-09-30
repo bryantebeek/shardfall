@@ -3,6 +3,8 @@
 import type { Element, SpriteId } from '../game/types';
 
 export type StageMode = 'title' | 'map' | 'battle';
+/** The physical set: the Anchorlight shrine, the village, the forest road, the north bridge, the hill. */
+export type StageSet = 'shrine' | 'village' | 'forest' | 'bridge' | 'hill';
 
 export interface StageUnit {
   /** Hero ids are 'knight' | 'bmage' | 'wmage'; enemies use uids like 'e0', 'e1', 'e2'. */
@@ -17,8 +19,9 @@ export interface Stage {
   /** Canvas is sized to the 16:9 letterboxed game rect (CSS px); called on window resize. */
   resize(w: number, h: number): void;
   /** title: slow cinematic camera orbit; map: dimmed/heavily blurred backdrop drift; battle: framed battle camera.
-   *  theme changes the diorama lighting: 'ruins' (warm torches + teal crystals), 'depths' (colder, deeper floors), 'boss' (violet/crimson), 'dusk' (a burning village at sunset). */
-  setMode(mode: StageMode, theme?: 'ruins' | 'depths' | 'boss' | 'dusk'): void;
+   *  theme changes the diorama lighting: 'ruins' (warm torches + teal crystals), 'depths' (colder, deeper floors), 'boss' (violet/crimson), 'dusk' (a burning village at sunset).
+   *  set swaps the scenery (fading through dark); omitted keeps the current set. */
+  setMode(mode: StageMode, theme?: 'ruins' | 'depths' | 'boss' | 'dusk', set?: StageSet): void;
   /** Replace all battle units. Heroes on the left, enemies on the right, JRPG side-view formation. Units animate in. */
   setUnits(units: StageUnit[]): void;
   /** Normalized [0..1] position in the game rect (x from left, y from top) of a unit anchor. */

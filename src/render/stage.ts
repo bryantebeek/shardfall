@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { Element } from '../game/types';
 import { getSprite } from '../art';
 import type { CastKind, Stage, StageMode, StageUnit } from './api';
-import { Diorama, THEMES, clonePalette, lerpPalette, type Theme } from './diorama';
+import { Diorama, THEMES, clonePalette, lerpPalette, type StageSet, type Theme } from './diorama';
 import { Post } from './post';
 import { GLINT, PIXEL, ParticlePool, SOFT, Shards, type V3 } from './particles';
 import { Tweens, ease, lerp } from './tween';
@@ -57,6 +57,8 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   // theme + mode state
   let mode: StageMode = 'title';
   let theme: Theme = 'ruins';
+  /** the physical set; changing it fades through dark and swaps at the darkest point */
+  let set: StageSet = 'shrine', nextSet: StageSet | null = null, swapK = 0;
   const pal = clonePalette(THEMES.ruins);
   let palFrom = clonePalette(pal), palTo = THEMES.ruins, palK = 1;
   diorama.setPalette(pal);
@@ -373,6 +375,9 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     time += rdt; gtime += gdt;
     real.update(rdt); game.update(gdt * speed);
 
+    // set swap: fade out, swap, fade in
+    if (nextSet) { swapK = Math.min(1, swapK + rdt / 0.25); if (swapK >= 1) { diorama.setSet(nextSet); set = nextSet; nextSet = null; } }
+    else if (swapK > 0) swapK = Math.max(0, swapK - rdt / 0.4);
     // theme / look blending
     if (palK < 1) { palK = Math.min(1, palK + rdt / 1.6); lerpPalette(pal, palFrom, palTo, ease.inOutSine(palK)); }
     // tilt-shift focus band hugs the units (heads..feet) in battle
@@ -425,7 +430,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     const g = post.grade.uniforms;
     g.uLift.value.copy(pal.lift); g.uGain.value.copy(pal.gain); g.uSat.value = pal.sat;
     g.uVignette.value = look.vignette;
-    g.uDarken.value = look.darken;
+    g.uDarken.value = Math.min(1, look.darken + swapK * (1 - look.darken));
     g.uFlash.value.copy(flashC);
     g.uTime.value = time;
     renderer.toneMappingExposure = pal.exposure * look.exposure;
@@ -444,7 +449,8 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       post.setSize(w, h);
     },
 
-    setMode(m, th) {
+    setMode(m, th, st) {
+      if (st && st !== (nextSet ?? set)) nextSet = st;
       if (th && th !== theme) {
         theme = th; palFrom = clonePalette(pal); palTo = THEMES[th]; palK = 0;
       }

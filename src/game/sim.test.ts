@@ -83,9 +83,11 @@ const ACT: [NodeType, number][] = [
   ['battle', 9], ['elite', 10], ['battle', 11], ['battle', 12], ['inn', 14], ['boss', 15],
 ];
 
-describe.skipIf(!process.env.SIM)('balance sim', () => {
+const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
+
+describe.skipIf(!env.SIM)('balance sim', () => {
   it('plays acts', () => {
-    const N = Number(process.env.SIM_N ?? 60);
+    const N = Number(env.SIM_N ?? 60);
     const deaths: Record<string, number> = {};
     const hpAfter: Record<string, number[]> = {};
     let wins = 0, bossTurns = 0;

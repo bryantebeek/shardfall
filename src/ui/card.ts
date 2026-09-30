@@ -22,7 +22,7 @@ function vals(c: CardInst, b?: Battle, target?: EnemyF) {
 }
 
 export function cardTextHtml(c: CardInst, b?: Battle, target?: EnemyF): string {
-  return fmtText(cardText(c), vals(c, b, target));
+  return `<span>${fmtText(cardText(c), vals(c, b, target))}</span>`;
 }
 
 export function cardEl(c: CardInst, b?: Battle): HTMLElement {

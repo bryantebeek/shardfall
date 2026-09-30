@@ -52,6 +52,9 @@ export async function battleScreen(run: Run, type: NodeType): Promise<boolean> {
 
   let busy = true;
   let finish: (won: boolean) => void = () => {};
+  (window as unknown as { __sf: unknown }).__sf = { battle: b, run, get busy() { return busy; } }; // test/debug hook
+  /** units whose heal/shield/buff/debuff reaction was already played by the current cast */
+  const covered = new Set<string>();
   let aim: Aim | null = null;
   let hoverTarget: string | null = null;
   let hovered: string | null = null;
@@ -160,6 +163,7 @@ export async function battleScreen(run: Run, type: NodeType): Promise<boolean> {
 
   function intentTip(e: EnemyF, it: Intent): string {
     if (it.kind === 'stunned') return `<b>${e.name} is Broken!</b><br>It will lose its next action and takes 50% more damage.`;
+    if (it.kind === 'unknown') return `<b>${e.name}</b>`;
     const m = b.moveOf(e);
     const parts: string[] = [];
     if (it.dmg !== undefined) {
@@ -520,8 +524,9 @@ export async function battleScreen(run: Run, type: NodeType): Promise<boolean> {
         if (ev.side === 'enemy') { audio.sfx('enemyTurn'); await banner('Enemy Turn', 'enemy', 650); }
         else if (ev.turn > 1) { audio.sfx('playerTurn'); await banner(`Turn ${ev.turn}`, 'player', 550); }
         return;
-      case 'play': case 'item': return;
+      case 'play': case 'item': covered.clear(); return;
       case 'move': {
+        covered.clear();
         stage.setActive(ev.id);
         moveBanner.textContent = ev.name;
         moveBanner.classList.remove('show'); void moveBanner.offsetWidth; moveBanner.classList.add('show');
@@ -535,6 +540,7 @@ export async function battleScreen(run: Run, type: NodeType): Promise<boolean> {
       case 'cast': {
         const s: Sfx = ev.kind === 'heal' ? 'heal' : ev.kind === 'shield' ? 'block' : ev.kind === 'buff' ? 'buff' : ev.kind === 'debuff' ? 'debuff' : EL_SFX[ev.kind];
         audio.sfx(s);
+        if (ev.kind === 'heal' || ev.kind === 'shield' || ev.kind === 'buff' || ev.kind === 'debuff') ev.to.forEach(id => covered.add(`${id}:${ev.kind}`));
         await stage.cast(ev.from, ev.to, ev.kind);
         return;
       }
@@ -602,11 +608,11 @@ export async function battleScreen(run: Run, type: NodeType): Promise<boolean> {
         return;
       case 'block':
         setBlock(ev.id, ev.block);
-        if (ev.amount > 0) { stage.block(ev.id); audio.sfx('block'); popup(ev.id, `+${ev.amount}`, 'blockpop'); await wait(120); }
+        if (ev.amount > 0) { if (!covered.has(`${ev.id}:shield`)) stage.block(ev.id); audio.sfx('block'); popup(ev.id, `+${ev.amount}`, 'blockpop'); await wait(120); }
         return;
       case 'heal':
         setHp(ev.id, ev.hp);
-        stage.heal(ev.id);
+        if (!covered.has(`${ev.id}:heal`)) stage.heal(ev.id);
         if (ev.amount > 0) popup(ev.id, `+${ev.amount}`, 'healpop');
         await wait(140);
         return;
@@ -615,7 +621,8 @@ export async function battleScreen(run: Run, type: NodeType): Promise<boolean> {
         if (ev.delta > 0) {
           const info = STATUS_INFO[ev.s];
           popup(ev.id, `${info.name}${ev.s === 'taunt' || ev.s === 'rampart' ? '' : ' ' + ev.delta}`, info.buff ? 'status-tag.buff' : 'status-tag.debuff');
-          info.buff ? stage.buff(ev.id) : stage.debuff(ev.id);
+          const k = info.buff ? 'buff' : 'debuff';
+          if (!covered.has(`${ev.id}:${k}`)) info.buff ? stage.buff(ev.id) : stage.debuff(ev.id);
           await wait(160);
         }
         return;

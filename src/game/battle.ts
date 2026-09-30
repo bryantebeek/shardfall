@@ -130,7 +130,7 @@ export class Battle {
 
   /** Displayed intent, reflecting strength/weak/vulnerable and taunt redirection. */
   intent(e: EnemyF): Intent {
-    if (e.dead) return { kind: 'unknown' };
+    if (e.dead || !e.move) return { kind: 'unknown' };
     if (e.broken && !e.skipped) return { kind: 'stunned', label: 'Broken' };
     const m = this.moveOf(e);
     const it: Intent = { kind: m.kind, label: m.name };

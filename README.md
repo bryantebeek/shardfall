@@ -1,11 +1,11 @@
 # Shardfall
 
-A story-driven JRPG deckbuilder with an HD-2D (Octopath Traveler-like) look, running in the browser.
+A story-driven JRPG deckbuilder with an HD-2D (Octopath Traveler-like) look, running in the browser. How it plays: [MECHANICS.md](MECHANICS.md). The story: [STORY.md](STORY.md).
 
 - **Story mode**: New Journey plays the Prologue and Chapter 1, *Emberfall* (see [STORY.md](STORY.md)). Fall, and Seren's Hourglass sends the party back to dawn with a new **Memory** (Foresight, Pathfinding, People) that changes the next attempt.
-- **The day**: each chapter is one day. Every stop on the map costs hours, and Kaldra comes over the ridge at dusk.
+- **The map remembers**: Emberfall is a real place with roads, and fights happen on the roads. Fog hides what you haven't seen; earlier attempts leave their route, where they fell, and what Memories revealed.
 - **Party of three**: Aldric the Knight, Lyra the Black Mage, Seren the White Mage. Separate HP, one shared deck. KO'd heroes' cards go dead.
-- **One Action per hero**: each hero acts once a turn. Cards are Swift (free), take the hero's Action, or are Heavy (the hero also sits out the next turn). The hand is sorted by hero.
+- **Actions per hero**: each hero gains an Action every turn and can hold two; a card costs its dots, Swift cards are free. Hold a hero to afford a 2-dot card or to act twice.
 - **Break system**: enemies have shields and hidden elemental weaknesses. Hit weaknesses to break them: they lose a turn, take +50% damage, and pay out **Crystal Shards**, the currency.
 - **Party levels**, accessories, items (Potion, Ether, Phoenix Down...), events, a market and inns.
 - **Installable** as an app (PWA) from any HTTPS address or localhost, and playable offline once loaded.

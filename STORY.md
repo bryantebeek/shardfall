@@ -126,6 +126,17 @@ At dusk Kaldra's soldiers come over the ridge, led by the Ashen Knight. Aldric f
 
 **Why it matters later:** Seren asked Aldric to carry the relic in every one of the 412 loops, so that he would touch it and come back with them.
 
+**In the game** (playable; script in `src/game/chapter1.ts`, rules in [MECHANICS.md](MECHANICS.md)):
+- **Scenes:** the Prologue (the boy, the knight, "Don't look back"), the arrival, dusk, the shrine steps (a fight Aldric can't win), dawn, the hill, and the ending.
+- **Lyra's false name is "Wren".** Seren calls her Lyra anyway, and answers "Of course." when corrected: an early hint that Seren already knows her.
+- When Aldric says the Hourglass is heavier than it looks, Seren answers *"It always is."*
+- **The miller's daughter is Nell.**
+- **Memories arrive in this order:** the Knight's left guard (from the first night), then the north bridge, then the well. Each later fall gives the next one.
+- **The twist is the hill scene:** whichever road they take, the Knight is waiting on the hill. Lyra: *"Nobody knew we'd come this way."* Seren: *"He did... He remembers too."*
+- **The escape ends** when the Knight is at half health: he hesitates over Lyra, they run, and Seren sets the first Anchor. Last line: *"Behind them, Emberfall burns. Aldric doesn't look back."* (It sets up the Finale, where he does.)
+- **The map** is Emberfall itself: the Anchorlight, the library, the square, the mill, the market, the north bridge, the wayside shrine, the forest, the shepherd's hut and the hill. Earlier attempts' routes and falls stay on it.
+- **Attempts are counted from the first night** (attempt 1). The counter is shown from the start; the story's big reveal of the number is Chapter 6 (*Loop 412*).
+
 ---
 
 ## Chapter 2 — The Road of Lanterns

@@ -6,15 +6,18 @@ import { ITEMS } from '../game/loot';
 import { afterBattle, battleInit, encounter, theme, type NodeType, type Run } from '../game/run';
 import type { CardInst, Element, HeroId, Intent, StatusId } from '../game/types';
 import type { Sfx } from '../audio/api';
-import { app, banner, btn, mount, toast } from './app';
+import { app, banner as showBanner, btn, mount, toast } from './app';
 import { cardEl, refreshCardText } from './card';
-import { ELEMENT_NAMES, STATUS_INFO, h, img, statusChip, wait } from './dom';
+import { ELEMENT_NAMES, STATUS_INFO, h, img, statusChip, wait as sleep } from './dom';
 import { topBar } from './hud';
 import { deckView } from './screens';
 
 const CARD_W = 200, CARD_H = 280;
 const HAND_Y = 1080 - 150; // card centre at rest
 const PLAY_LINE = 740; // releasing above this plays an untargeted card
+// battle pacing follows the Battle Speed setting
+const wait = (ms: number) => sleep(ms / app.speed);
+const banner = (text: string, cls?: string, ms?: number) => showBanner(text, cls, (ms ?? 900) / app.speed);
 const EL_SFX: Record<Element, Sfx> = { phys: 'slash', fire: 'fire', ice: 'ice', thunder: 'thunder', holy: 'holy', dark: 'dark' };
 
 type Aim = { kind: 'card'; uid: string; sticky: boolean } | { kind: 'item'; slot: number };
@@ -113,7 +116,8 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
     }
     hit.addEventListener('pointerenter', () => { hovered = u.id; onHoverUnit(); });
     hit.addEventListener('pointerleave', () => { if (hovered === u.id) hovered = null; onHoverUnit(); });
-    hit.addEventListener('click', () => { if (aim) tryRelease(); });
+    // set hovered here too: on touch, pointerleave fires between lifting the finger and the click
+    hit.addEventListener('click', () => { if (aim) { hovered = u.id; tryRelease(); } });
     return uh;
   }
 
@@ -403,6 +407,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
   }
 
   window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerdown', onMove, true); // touch taps have no pointermove: track position on press
   window.addEventListener('pointerup', onUp);
   window.addEventListener('contextmenu', onContext);
   document.addEventListener('keydown', onKey);
@@ -702,6 +707,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
   alive = false;
   document.removeEventListener('keydown', onKey);
   window.removeEventListener('pointermove', onMove);
+  window.removeEventListener('pointerdown', onMove, true);
   window.removeEventListener('pointerup', onUp);
   window.removeEventListener('contextmenu', onContext);
   return result;

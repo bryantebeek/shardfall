@@ -48,6 +48,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   let time = 0, gtime = 0;
   let stopT = 0, slowT = 0, slowScale = 1;
   let trauma = 0;
+  let speed = 1;
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches; // no camera shake or screen flashes
   const flashC = new THREE.Color(0, 0, 0);
   let bloomPulse = 0;
@@ -367,7 +368,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     const ts = stopT > 0 ? 0 : slowT > 0 ? slowScale : 1;
     const gdt = rdt * ts;
     time += rdt; gtime += gdt;
-    real.update(rdt); game.update(gdt);
+    real.update(rdt); game.update(gdt * speed);
 
     // theme / look blending
     if (palK < 1) { palK = Math.min(1, palK + rdt / 1.6); lerpPalette(pal, palFrom, palTo, ease.inOutSine(palK)); }
@@ -685,6 +686,7 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
 
     shake(intensity) { trauma = Math.min(1, trauma + intensity); },
     flash,
+    setSpeed(mult) { speed = mult; },
   };
 
   const w0 = canvas.clientWidth || 1280, h0 = canvas.clientHeight || 720;

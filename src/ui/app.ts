@@ -7,6 +7,8 @@ export const app = {} as {
   audio: Audio;
   ui: HTMLElement;
   scale: number;
+  /** battle speed multiplier (Settings) */
+  speed: number;
   toVirtual(x: number, y: number): [number, number];
 };
 

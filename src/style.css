@@ -24,7 +24,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-body { font-family: var(--serif); color: var(--text); user-select: none; -webkit-user-select: none; }
+body { font-family: var(--serif); color: var(--text); user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-touch-callout: none; }
 #frame { position: absolute; overflow: hidden; background: #000; }
 #stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 #ui { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; font-size: 22px; }
@@ -243,6 +243,7 @@ button { font: inherit; color: inherit; }
 @keyframes shake { 20%, 60% { margin-left: -10px; } 40%, 80% { margin-left: 10px; } }
 
 /* ───────────────────────── battle ───────────────────────── */
+.battle { touch-action: none; } /* card drags must not turn into page pans on touch */
 .battle .bottom-shade { position: absolute; left: 0; right: 0; bottom: 0; height: 300px; background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.55)); pointer-events: none; }
 .units { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
 .unit { position: absolute; left: 0; top: 0; will-change: transform; }
@@ -556,6 +557,9 @@ button { font: inherit; color: inherit; }
 .slider { display: flex; align-items: center; gap: 20px; font-family: var(--title); font-size: 24px; }
 .slider span { width: 140px; }
 .slider input { flex: 1; accent-color: var(--gold); }
+.speed-opts { flex: 1; display: flex; gap: 8px; }
+.speed-btn { flex: 1; padding: 6px; font-size: 20px; }
+.speed-btn.on { border-color: var(--gold); color: #fff; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.5), 0 0 14px rgba(232, 199, 122, 0.5); }
 .settings-help { font-size: 20px; color: var(--muted); font-style: italic; margin: 10px 0 0; }
 
 /* ───────────────────────── end ───────────────────────── */

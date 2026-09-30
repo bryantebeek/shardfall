@@ -23,6 +23,8 @@ app.ui = ui;
 app.audio = audio;
 app.stage = createStage(canvas);
 app.scale = 1;
+app.speed = Number(localStorage.getItem('shardfall.speed')) || 1;
+app.stage.setSpeed(app.speed);
 app.toVirtual = (x, y) => {
   const r = frame.getBoundingClientRect();
   return [(x - r.left) / app.scale, (y - r.top) / app.scale];

@@ -417,6 +417,15 @@ export function settings(onAbandon?: () => void) {
   modal(h('div.settings',
     h('h3.window-title', 'Settings'),
     slider('master', 'Master', 0.8), slider('music', 'Music', 0.55), slider('sfx', 'Effects', 0.8),
+    h('div.slider', h('span', 'Speed'), h('div.speed-opts', [1, 1.5, 2].map(v => {
+      const b = btn(`${v}×`, () => {
+        app.speed = v;
+        app.stage.setSpeed(v);
+        localStorage.setItem('shardfall.speed', String(v));
+        b.parentElement!.querySelectorAll('.btn').forEach(x => x.classList.toggle('on', x === b));
+      }, 'speed-btn' + (app.speed === v ? ' on' : ''));
+      return b;
+    }))),
     onAbandon ? confirmBtn('Abandon Run', 'Really abandon? Click again', onAbandon, 'danger') : null,
     h('p.settings-help', 'Controls: drag a card onto a target (or click a card, then a target). Number keys select cards, E ends the turn, Esc / right-click cancels.'),
   ));

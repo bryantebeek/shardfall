@@ -82,6 +82,15 @@ export function initTooltips(root: HTMLElement, toVirtual: (x: number, y: number
   tipEl = h('div.tooltip');
   root.append(tipEl);
   let cur: HTMLElement | null = null;
+  const place = (e: PointerEvent) => {
+    if (!cur) return;
+    if (!cur.isConnected) { cur = null; tipEl.classList.remove('show'); return; }
+    const [x, y] = toVirtual(e.clientX, e.clientY);
+    const w = tipEl.offsetWidth, hgt = tipEl.offsetHeight;
+    tipEl.style.left = Math.min(1920 - w - 10, x + 18) + 'px';
+    tipEl.style.top = (y + hgt + 30 > 1080 ? y - hgt - 14 : y + 22) + 'px';
+  };
+  // pointerover also fires on touch taps (which have no pointermove), so place the tip there too
   document.addEventListener('pointerover', e => {
     const t = (e.target as HTMLElement).closest?.('[data-tip]') as HTMLElement | null;
     if (t === cur) return;
@@ -89,14 +98,8 @@ export function initTooltips(root: HTMLElement, toVirtual: (x: number, y: number
     if (!t) return tipEl.classList.remove('show');
     tipEl.innerHTML = t.dataset.tip!;
     tipEl.classList.add('show');
+    place(e);
   });
-  document.addEventListener('pointermove', e => {
-    if (!cur) return;
-    if (!cur.isConnected) { cur = null; tipEl.classList.remove('show'); return; }
-    const [x, y] = toVirtual(e.clientX, e.clientY);
-    const w = tipEl.offsetWidth, hgt = tipEl.offsetHeight;
-    tipEl.style.left = Math.min(1920 - w - 10, x + 18) + 'px';
-    tipEl.style.top = (y + hgt + 30 > 1080 ? y - hgt - 14 : y + 22) + 'px';
-  });
+  document.addEventListener('pointermove', place);
 }
 export function hideTip() { tipEl?.classList.remove('show'); }

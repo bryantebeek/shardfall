@@ -49,4 +49,6 @@ export interface Stage {
   shake(intensity: number): void;
   /** Full-screen additive flash, e.g. '#ffffff', '#ff5533'. */
   flash(color?: string): void;
+  /** Battle speed multiplier for action animations (attack/cast/ko...); idle motion is unaffected. */
+  setSpeed(mult: number): void;
 }

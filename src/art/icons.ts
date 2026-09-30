@@ -2,7 +2,7 @@
 import type { Element, IntentKind, StatusId } from '../game/types';
 
 export type UiIcon = 'gold' | 'energy' | 'deck' | 'discard' | 'exhaust' | 'heart' | 'shield' | 'sword' | 'crystal' | 'potion' | 'ether' | 'phoenix' | 'elixir' | 'bomb' | 'wind' | 'tonic'
-  | 'battle' | 'elite' | 'event' | 'inn' | 'shop' | 'treasure' | 'boss' | 'star' | 'map' | 'lock' | 'skull' | 'xp';
+  | 'battle' | 'elite' | 'event' | 'inn' | 'shop' | 'treasure' | 'boss' | 'star' | 'map' | 'lock' | 'skull' | 'xp' | 'card' | 'gear';
 export type AccessoryIcon = 'charm' | 'powerRing' | 'magusCirclet' | 'angelFeather' | 'etherStone' | 'swiftBoots' | 'breakerMark' | 'prismLens' | 'luckyCoin' | 'guardianBangle' | 'phoenixPlume' | 'tome' | 'chalice';
 
 // ============================================================================================
@@ -741,6 +741,23 @@ const UI: Record<UiIcon, Draw> = {
     p.outline();
   },
   deck: (p) => { cardStack(p, 3, PAL.blue); p.outline(); },
+  card: (p) => {
+    const m = p.mask().rect(3, 1, 10, 14);
+    p.paint(m.grow(), darkOf(PAL.blue[1]));
+    p.fill(m, PAL.blue, { base: 2.4, grad: 1.2 });
+    p.paint(m.erode().sub(m.erode().erode()), PAL.blue[4], 0.5);
+    p.fill(p.mask().poly(8, 4.5, 11, 8, 8, 11.5, 5, 8), PAL.gold, { base: 3.5 });
+    p.outline();
+  },
+  gear: (p) => {
+    // centred on (8, 8) so it spins in place
+    const m = p.mask().test((x, y) => {
+      const dx = x - 8, dy = y - 8, r = Math.hypot(dx, dy);
+      return r <= 5.3 || (r <= 7.4 && Math.cos(Math.atan2(dy, dx) * 6) > -0.1);
+    }).sub(p.mask().circle(8, 8, 2.2));
+    p.fill(m, PAL.silver, { base: 3.2, grad: 1.4 });
+    p.outline();
+  },
   discard: (p) => {
     const back = p.mask().rect(2, 3, 8, 10);
     p.paint(back.grow(), darkOf(PAL.stone[1]));

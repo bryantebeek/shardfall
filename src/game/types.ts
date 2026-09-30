@@ -22,18 +22,18 @@ export type StatusId =
 
 export type Statuses = Partial<Record<StatusId, number>>;
 
-export type CardType = 'attack' | 'skill' | 'power' | 'limit' | 'status';
+export type CardType = 'attack' | 'skill' | 'power' | 'status';
 export type Rarity = 'starter' | 'common' | 'uncommon' | 'rare' | 'special';
 export type TargetKind = 'enemy' | 'allEnemies' | 'randomEnemy' | 'ally' | 'deadAlly' | 'allAllies' | 'self' | 'none';
 
 /** Art key for procedurally drawn card illustrations (see src/art). */
 export type CardArt =
   | 'slash' | 'shield' | 'taunt' | 'cleave' | 'twin' | 'bash' | 'cover' | 'flameblade' | 'warcry'
-  | 'wall' | 'crush' | 'rampart' | 'sworddance' | 'laststand' | 'thorns' | 'aegis'
+  | 'wall' | 'crush' | 'rampart' | 'sworddance' | 'laststand' | 'thorns'
   | 'fire' | 'ice' | 'thunder' | 'scan' | 'firestorm' | 'chain' | 'frostnova' | 'ignite'
-  | 'prism' | 'flare' | 'manashield' | 'surge' | 'focus' | 'cataclysm'
+  | 'prism' | 'flare' | 'manashield' | 'surge' | 'focus'
   | 'cure' | 'protect' | 'holy' | 'cura' | 'regen' | 'bless' | 'banish' | 'sanctuary' | 'raise'
-  | 'purify' | 'prayer' | 'holynova' | 'miracle' | 'benediction' | 'angel' | 'seraphim'
+  | 'purify' | 'prayer' | 'holynova' | 'miracle' | 'benediction' | 'angel'
   | 'daze';
 
 export interface CardInst {
@@ -58,4 +58,5 @@ export interface Intent {
 export type SpriteId =
   | 'knight' | 'bmage' | 'wmage'
   | 'slime' | 'goblin' | 'bat' | 'skeleton' | 'wisp' | 'sprout'
-  | 'ogre' | 'paladin' | 'wyrm';
+  | 'ogre' | 'paladin' | 'wyrm'
+  | 'soldier' | 'captain' | 'ashknight';

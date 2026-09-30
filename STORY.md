@@ -253,7 +253,7 @@ He tells them the first cause. Caius, Ilse, the sanctum, the struck crystal, the
 
 The Knight's plan hasn't changed: Lyra must die before she can choose. *"She always chooses it. I watched her choose it four hundred times."* The party's plan is to prove the Order wrong before the Reforging. They need his half of the Hourglass; he needs them not to fail. An alliance of the worst kind.
 
-**He joins as a guest**: two Aldrics in one party, younger and older, with a shared Limit Break. They argue about everything except how to fight.
+**He joins as a guest**: two Aldrics in one party, younger and older. They argue about everything except how to fight.
 
 **Fragment 4, the girl in the light:** *Ilse, asleep inside the crystal, feels something strike it, and opens her eyes.*
 

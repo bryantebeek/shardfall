@@ -2,7 +2,7 @@
 export type Sfx =
   | 'hover' | 'click' | 'select' | 'error' | 'cardDraw' | 'cardPlay' | 'shuffle' | 'endTurn'
   | 'slash' | 'hit' | 'bigHit' | 'block' | 'fire' | 'ice' | 'thunder' | 'holy' | 'dark'
-  | 'heal' | 'buff' | 'debuff' | 'break' | 'ko' | 'revive' | 'limitReady' | 'limit'
+  | 'heal' | 'buff' | 'debuff' | 'break' | 'ko' | 'revive' | 'chime' | 'surge'
   | 'victory' | 'defeat' | 'levelUp' | 'gold' | 'purchase' | 'chest' | 'map' | 'enemyTurn' | 'playerTurn';
 
 export type Track = 'title' | 'map' | 'battle' | 'elite' | 'boss' | 'inn' | 'none';

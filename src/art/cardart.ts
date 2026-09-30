@@ -574,24 +574,6 @@ const SCENES: Record<CardArt, Scene> = {
     stamp(p, F);
     vignette(p, TH.kSteel);
   },
-  aegis: (p) => {
-    base(p, TH.kGold, 32, 20, 34, 0.6, 17);
-    rays(p, 32, 20, 18, 6, 44, '#fff0b0', 0.55, 0.1, 0.07);
-    glow(p, 32, 20, 22, '#ffffff', 0.45, 18);
-    const SL = ['#ffd070', '#fff0b0', '#ffffff', '#ffffff'];
-    const L = layer();
-    const inner = kite(L, 32, 21, 2.25, PAL.gold, PAL.silver);
-    const b = inner.bbox();
-    L.fill(L.mask().rect(31, b.y0 + 2, 3, b.h - 6).rect(b.x0 + 3, b.y0 + 7, b.w - 6, 3).and(inner), PAL.white, { base: 4 });
-    L.fill(L.mask().circle(32.5, b.y0 + 8.5, 2.2), PAL.red, { mode: 'sphere', bias: 0.6 });
-    stamp(p, L, '#3a1a08');
-    const m = streak(p, 72, 78, 72, -2.4, -1.72, 6, SL, 0.65);
-    glowMask(p, m, '#ffffff', 2, 0.5);
-    streak(p, 72, 78, 72, -2.4, -1.72, 6, SL, 0.65);
-    sparkle(p, 14, 8, 4, '#fff0b0'); sparkle(p, 51, 30, 3, '#fff0b0'); sparkle(p, 50, 7, 2, '#ffffff'); sparkle(p, 44, 4, 3, '#ffffff');
-    motes(p, TH.kGold, 41, 16);
-    vignette(p, TH.kGold, 0.7);
-  },
 
   // ------------------------------------------------------------------ BLACK MAGE
   fire: (p) => {
@@ -786,30 +768,6 @@ const SCENES: Record<CardArt, Scene> = {
     for (let i = 0; i < 5; i++) p.px(32, 19 + i, '#e8d0ff', 0.8 - i * 0.15);
     sparkle(p, 20, 8, 2, '#e8d0ff'); sparkle(p, 45, 9, 2, '#e8d0ff');
     vignette(p, TH.arcane);
-  },
-  cataclysm: (p) => {
-    base(p, TH.cata, 22, 32, 36, 0.5, 31);
-    ground(p, 33, '#0e0408', '#b04a20', 31);
-    glow(p, 20, 34, 20, '#ffb050', 0.7, 8);
-    const trails: [string[], number][] = [[FIREC, -0.35], [['#1f5a8a', '#3fa0d0', '#8eeef0', '#e8fffe'], 0], [['#8a6a10', '#e0c040', '#fff08a', '#ffffff'], 0.35]];
-    for (const [cols, off] of trails) {
-      const t = T(30, 20, -0.62 + off * 0.35);
-      for (let i = 0; i < cols.length; i++) {
-        const w = 5 - i * 1.1;
-        p.paint(p.mask().poly(...[...t(0, -w), ...t(40, -w * 0.2 + off * 10), ...t(40, w * 0.2 + off * 10), ...t(0, w)]), cols[i], 0.85);
-      }
-    }
-    const L = layer();
-    const rock = L.mask().circle(28, 21, 7.5);
-    L.fill(rock, ['#140808', '#2a1210', '#46201a', '#6a3424', '#8a4a30', '#a86040'], { mode: 'sphere', bias: -0.3 });
-    const hot = rock.clone().and(L.mask().circle(24, 25, 7.5));
-    L.fill(hot, ['#a8401a', '#f28a24', '#fcc848', '#fff6c0'], { mode: 'sphere', cx: 22, cy: 27, r: 9, bias: 0.3 });
-    L.paint(L.mask().line(27, 16, 30, 20).line(30, 20, 33, 21).line(30, 20, 29, 24), '#ff8a30');
-    stamp(p, L, '#200806');
-    burst(p, 16, 34, 9, 3, 11, ['#d04a1a', '#ffc050', '#ffffff'], 31);
-    for (const [x, y] of [[8, 26], [12, 22], [26, 28], [6, 30], [30, 30]]) p.px(x, y, '#ffc050').px(x, y + 1, '#a8401a');
-    motes(p, TH.cata, 32, 18);
-    vignette(p, TH.cata, 0.75);
   },
 
   // ------------------------------------------------------------------ WHITE MAGE
@@ -1019,30 +977,6 @@ const SCENES: Record<CardArt, Scene> = {
     stamp(p, L, '#3a2008');
     sparkle(p, 32, 4, 2, '#fff4c8');
     vignette(p, TH.holy);
-  },
-  seraphim: (p) => {
-    base(p, TH.kGold, 32, 18, 36, 0.6, 49);
-    rays(p, 32, 16, 20, 4, 44, '#ffffff', 0.5, 0.1, 0.06);
-    glow(p, 32, 17, 20, '#fff4c8', 0.6, 16);
-    const W = layer();
-    wing(W, 30, 25, -1, 0.55, PAL.white, -0.8);
-    wing(W, 34, 25, 1, 0.55, PAL.white, -0.8);
-    wing(W, 30, 17, -1, 0.55, PAL.white, 0.9);
-    wing(W, 34, 17, 1, 0.55, PAL.white, 0.9);
-    wing(W, 30, 21, -1, 0.78, PAL.white, 0.05);
-    wing(W, 34, 21, 1, 0.78, PAL.white, 0.05);
-    stamp(p, W, '#4a2e10');
-    const L = layer();
-    const body = L.mask().poly(26.5, 36, 37.5, 36, 35, 19, 32, 17, 29, 19).circle(32, 13.5, 2.6);
-    L.fill(body, ['#8a6424', '#c8a050', '#f2d890', '#fff8e0', '#ffffff', '#ffffff'], { base: 3.4, grad: 2.2 });
-    L.paint(L.mask().line(32, 20, 32, 35), '#e8c878');
-    stamp(p, L, '#4a2e10');
-    const halo = p.mask().ellipse(32, 9, 5, 1.6).sub(p.mask().ellipse(32, 9, 3.6, 0.7));
-    glowMask(p, halo, '#ffffff', 2, 0.6);
-    p.paint(halo, '#fff0a0');
-    glow(p, 32, 20, 5, '#ffffff', 0.7);
-    for (const [x, y, s] of [[10, 6, 3], [54, 8, 3], [8, 32, 2], [56, 30, 2], [32, 38, 2]]) sparkle(p, x, y, s, '#fff4c8');
-    vignette(p, TH.kGold, 0.65);
   },
 
   // ------------------------------------------------------------------ STATUS

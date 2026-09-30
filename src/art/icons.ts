@@ -3,7 +3,7 @@ import type { Element, IntentKind, StatusId } from '../game/types';
 
 export type UiIcon = 'gold' | 'energy' | 'deck' | 'discard' | 'exhaust' | 'heart' | 'shield' | 'sword' | 'crystal' | 'potion' | 'ether' | 'phoenix' | 'elixir' | 'bomb' | 'wind' | 'tonic'
   | 'battle' | 'elite' | 'event' | 'inn' | 'shop' | 'treasure' | 'boss' | 'star' | 'map' | 'lock' | 'skull' | 'xp';
-export type AccessoryIcon = 'charm' | 'powerRing' | 'magusCirclet' | 'angelFeather' | 'etherStone' | 'swiftBoots' | 'limitGem' | 'breakerMark' | 'prismLens' | 'luckyCoin' | 'guardianBangle' | 'phoenixPlume' | 'tome' | 'chalice';
+export type AccessoryIcon = 'charm' | 'powerRing' | 'magusCirclet' | 'angelFeather' | 'etherStone' | 'swiftBoots' | 'breakerMark' | 'prismLens' | 'luckyCoin' | 'guardianBangle' | 'phoenixPlume' | 'tome' | 'chalice';
 
 // ============================================================================================
 // Pixel engine (exported for textures.ts / cardart.ts)
@@ -891,14 +891,6 @@ const ACCESSORY: Record<AccessoryIcon, Draw> = {
     p.outline();
   },
   swiftBoots: (p) => { boot(p); p.outline(); },
-  limitGem: (p) => {
-    const m = p.mask().poly(8, 1, 14, 6, 11.5, 14, 4.5, 14, 2, 6);
-    p.fill(m, PAL.orange, { base: 2.6, grad: 2 });
-    p.fill(p.mask().poly(8, 1, 11, 6, 8, 11, 5, 6).and(m), PAL.orange, { base: 4.2, grad: 1 });
-    p.paint(p.mask().line(2, 6, 14, 6), PAL.orange[5], 0.5);
-    p.px(6, 4, W).px(7, 3, W);
-    p.outline();
-  },
   breakerMark: (p) => {
     const m = p.mask().poly(8, 1, 14.5, 8, 8, 15, 1.5, 8);
     p.fill(m, PAL.cyan, { base: 2.6, grad: 2 });

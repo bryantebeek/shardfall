@@ -239,10 +239,10 @@ const BOB4 = [0, 0, 1, 1];
 const DEFS: Record<SpriteId, Def> = {} as Record<SpriteId, Def>;
 
 // ===== Knight (Aldric)
-const K_BLUE = M(226, 0.55, 0.36, 0.1);
-const K_RED = M(356, 0.66, 0.42, 0.11);
-DEFS.knight = {
-  w: 48, h: 56, frames: 4, footY: 54, pad: 1,
+/** Armoured soldier template: Aldric, and (recoloured, facing left) Kaldra's soldiers. */
+function soldierDef(K_BLUE: Mat, K_RED: Mat, STEEL: Mat, STEEL_D: Mat, GOLD: Mat, flip = false, plume = true): Def {
+  return {
+  w: 48, h: 56, frames: 4, footY: 54, pad: 1, flip,
   draw(S, f) {
     const b = BOB4[f];
     const fl = [0, 1, 2, 1][f];
@@ -296,8 +296,8 @@ DEFS.knight = {
     S.d(GOLD, 3).line(21, 7, 25, 7).dot(26, 8, 27, 8, 28, 9);
     S.d(GOLD, 2).line(17, 13, 21, 13);
     // plume
-    S.p(K_RED, { cap: 3 }).poly(24, 8, 24, 4, 20, 2, 14, 3, 9, 6, 6, 10 + pw, 9, 9 + pw, 12, 8, 10, 12 + pw, 14, 10, 17, 9, 15, 13 + pw, 19, 10, 22, 9);
-    S.sh(1).line(22, 3, 15, 4).line(13, 5, 10, 7);
+    if (plume) S.p(K_RED, { cap: 3 }).poly(24, 8, 24, 4, 20, 2, 14, 3, 9, 6, 6, 10 + pw, 9, 9 + pw, 12, 8, 10, 12 + pw, 14, 10, 17, 9, 15, 13 + pw, 19, 10, 22, 9);
+    if (plume) S.sh(1).line(22, 3, 15, 4).line(13, 5, 10, 7);
     // near pauldron + shield
     S.p(STEEL, { spec: true, cap: 6 }).oval(11, 21, 12, 8);
     S.p(STEEL, { io: true }).poly(12, 26, 22, 26, 21, 29, 13, 29);
@@ -311,7 +311,18 @@ DEFS.knight = {
     S.d(GOLD, 4).dot(15, 35, 15, 36, 14, 36);
     S.d(GOLD, 1).dot(16, 36, 15, 37);
   },
-};
+  };
+}
+const K_BLUE = M(226, 0.55, 0.36, 0.1);
+const K_RED = M(356, 0.66, 0.42, 0.11);
+DEFS.knight = soldierDef(K_BLUE, K_RED, STEEL, STEEL_D, GOLD);
+// Kaldra: blackened iron, oxblood tabards; the captain keeps a crest and brass trim
+const K_IRON = mat([0x2a2834, 0x44424e, 0x66646e, 0x8e8a94, 0xc2bec4]);
+const K_IRON_D = mat([0x1a1822, 0x2c2a36, 0x44424e, 0x62606a, 0x8a8690]);
+const K_BLOOD = M(352, 0.62, 0.3, 0.09);
+const K_BRASS = mat([0x3a2a1c, 0x6a4a26, 0x9a7034, 0xc49a4a, 0xe8cc84]);
+DEFS.soldier = soldierDef(K_BLOOD, K_BLOOD, K_IRON, K_IRON_D, K_IRON_D, true, false);
+DEFS.captain = soldierDef(K_BLOOD, M(4, 0.7, 0.4, 0.1), K_IRON, K_IRON_D, K_BRASS, true, true);
 
 
 // ===== Black Mage (Lyra)
@@ -798,7 +809,9 @@ const DARK = mat([0x0c0816, 0x1c182e, 0x322e48, 0x524c6a, 0x8a82a2]);
 const VIO = mat([0x4a1478, 0x8a34d4, 0xc06aff, 0xe6b4ff, 0xfff6ff], 0x1e0a36, 0x3a1a5a);
 const CRIM = M(350, 0.62, 0.32, 0.09);
 const HORN = mat([0x241818, 0x4a3632, 0x7a6456, 0xb09c84, 0xe4d8c0]);
-DEFS.paladin = {
+/** Great-armoured knight template: the Fallen Paladin, and the Ashen Knight. */
+function paladinDef(DARK: Mat, VIO: Mat, CRIM: Mat, HORN: Mat): Def {
+  return {
   w: 76, h: 80, frames: 4, footY: 78, pad: 2, flip: true,
   draw(S, f) {
     const b = BOB4[f];
@@ -863,7 +876,12 @@ DEFS.paladin = {
     S.p(DARK, { cap: 3, spec: true, io: true }).oval(46, 41, 7, 8);
     S.sh(-1).line(50, 43, 50, 47);
   },
-};
+  };
+}
+DEFS.paladin = paladinDef(DARK, VIO, CRIM, HORN);
+const ASH = mat([0x2c2c34, 0x4a4a54, 0x72727a, 0xa2a2a8, 0xdadade]);
+const SHARD = mat([0x0c3a52, 0x1a7896, 0x3cc4dc, 0x9aeef6, 0xf0ffff], 0x08202e, 0x10485e);
+DEFS.ashknight = paladinDef(ASH, SHARD, M(220, 0.12, 0.2, 0.07), SHARD);
 
 // ===== Crystal Wyrm (boss)
 const AMETH = mat([0x1a0e3a, 0x36206c, 0x5e3aa4, 0x9a6ed8, 0xdcc6ff], 0x0e0620, 0x2a1450);

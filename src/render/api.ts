@@ -17,8 +17,8 @@ export interface Stage {
   /** Canvas is sized to the 16:9 letterboxed game rect (CSS px); called on window resize. */
   resize(w: number, h: number): void;
   /** title: slow cinematic camera orbit; map: dimmed/heavily blurred backdrop drift; battle: framed battle camera.
-   *  theme changes the diorama lighting: 'ruins' (warm torches + teal crystals), 'depths' (colder, deeper floors), 'boss' (violet/crimson). */
-  setMode(mode: StageMode, theme?: 'ruins' | 'depths' | 'boss'): void;
+   *  theme changes the diorama lighting: 'ruins' (warm torches + teal crystals), 'depths' (colder, deeper floors), 'boss' (violet/crimson), 'dusk' (a burning village at sunset). */
+  setMode(mode: StageMode, theme?: 'ruins' | 'depths' | 'boss' | 'dusk'): void;
   /** Replace all battle units. Heroes on the left, enemies on the right, JRPG side-view formation. Units animate in. */
   setUnits(units: StageUnit[]): void;
   /** Normalized [0..1] position in the game rect (x from left, y from top) of a unit anchor. */
@@ -44,8 +44,6 @@ export interface Stage {
   /** Heroes collapse (lie down, grey) and stay; enemies dissolve into particles and are removed. */
   ko(id: string): Promise<void>;
   revive(id: string): void;
-  /** Limit Break cinematic (~1.2s): scene darkens, camera pushes toward hero, light burst. */
-  limit(heroId: string): Promise<void>;
   shake(intensity: number): void;
   /** Full-screen additive flash, e.g. '#ffffff', '#ff5533'. */
   flash(color?: string): void;

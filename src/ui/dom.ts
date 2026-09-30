@@ -63,7 +63,6 @@ export function fmtText(text: string, vals: Partial<Record<string, [number, numb
   });
   s = s.replace(/\*([A-Za-z ]+?)\*/g, (_, w) => `<span class="kw" data-tip="${esc(`<b>${w}</b><br>${KEYWORDS[w] ?? ''}`)}">${w}</span>`);
   for (const [re, el] of ELEMENT_WORDS) s = s.replace(re, m => `<span class="el el-${el}"><img class="px" src="${elementIconUrl(el)}">${m}</span>`);
-  s = s.replace(/\bLIMIT\./, '<span class="limit-tag">LIMIT</span>');
   return s;
 }
 

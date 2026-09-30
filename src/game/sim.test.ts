@@ -39,12 +39,11 @@ function score(b: Battle): number {
     s += (h.st.str ?? 0) * 6 + (h.st.regen ?? 0) * 1.5 + (h.st.thorns ?? 0) * 2 + (h.st.ironwall ?? 0) * 4 + (h.st.prayer ?? 0) * 5 + (h.st.ward ?? 0) * 8 + (h.st.rampart ? 10 : 0);
     s -= (h.st.weak ?? 0) * 2 + (h.st.vuln ?? 0) * 2 + (h.st.burn ?? 0);
   }
-  s += b.energy * 0.5 + b.hand.length * 0.3;
+  s += b.aliveHeroes().reduce((n, h) => n + h.acts, 0) * 0.5 + b.hand.length * 0.3;
   return s;
 }
 
 function botTurn(b: Battle) {
-  if (b.limit >= 100) b.useLimit();
   for (let guard = 0; guard < 20 && !b.over; guard++) {
     const base = score(b);
     let best: { uid: string; t?: string; s: number } | null = null;
@@ -110,7 +109,6 @@ describe.skipIf(!env.SIM)('balance sim', () => {
         if (!res.won) break;
         if (type === 'boss') { wins++; break; }
         const rw = battleRewards(run, type);
-        run.gold += rw.gold;
         if (rw.cards.length && r.chance(0.7)) run.deck.push(newCard(run, rw.cards[r.int(rw.cards.length)]));
         const ups = gainXp(run, rw.xp);
         for (let u = 0; u < ups; u++) run.deck.push(newCard(run, r.pick(levelUpChoices(run))));
@@ -123,5 +121,43 @@ describe.skipIf(!env.SIM)('balance sim', () => {
     console.log(`\nruns ${N}   win rate ${(wins / N * 100).toFixed(0)}%\n` +
       'fight        reach  survive  lvl  partyMax  enemyHP  turns  hpLost    KOs\n' + rows.join('\n'));
     void CARDS; void ({} as EnemyF);
+  }, 600_000);
+});
+
+// Chapter 1: one route out of Emberfall (square → lane → hayloft → forest road → ridge → hill road → the hill), with and without Memories.
+describe.skipIf(!env.SIM)('chapter 1 sim', () => {
+  it('escapes Emberfall', async () => {
+    const { beginAttempt, emberfallEnemies, newStory } = await import('./chapter1');
+    const N = Number(env.SIM_N ?? 100);
+    const lines: string[] = [];
+    for (const mem of [[], ['guard'], ['guard', 'bridge']]) {
+      let wins = 0, reach = 0;
+      for (let i = 0; i < N; i++) {
+        const story = newStory();
+        story.memories = mem;
+        const run = beginAttempt(story, 3000 + i);
+        if (mem.includes('bridge')) run.flags!.push('bridgeDown');
+        const r = new Rng(i);
+        for (const id of [0, 3, 6, 8, 10, 12, 13]) {
+          const node = run.map[id];
+          if (node.type === 'inn') { if (run.heroes.some(h => h.hp < h.maxHp * 0.6)) restHeal(run); continue; }
+          run.at = id;
+          if (node.type === 'boss') reach++;
+          const b = new Battle(battleInit(run, { enemies: emberfallEnemies(run, node), hpScale: 1 }));
+          if (mem.includes('guard')) for (const e of b.enemies) if (e.def === 'ashknight') { e.known = [...e.weak]; e.shield = e.maxShield = 3; }
+          b.start();
+          while (!b.over && b.turn < 40) botTurn(b);
+          afterBattle(run, b);
+          if (b.over !== 'win') break;
+          if (node.type === 'boss') { wins++; break; }
+          const rw = battleRewards(run, node.type);
+            if (rw.cards.length && r.chance(0.7)) run.deck.push(newCard(run, rw.cards[r.int(rw.cards.length)]));
+          const ups = gainXp(run, rw.xp);
+          for (let u = 0; u < ups; u++) run.deck.push(newCard(run, r.pick(levelUpChoices(run))));
+        }
+      }
+      lines.push(`memories [${mem.join(', ') || 'none'}]`.padEnd(34) + `reach the hill ${Math.round((100 * reach) / N)}%   escape ${Math.round((100 * wins) / N)}%`);
+    }
+    console.log('\n' + lines.join('\n'));
   }, 600_000);
 });

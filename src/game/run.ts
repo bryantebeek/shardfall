@@ -1,5 +1,6 @@
 // Run-level state: party, deck, map, economy, progression, persistence. Pure (no DOM besides localStorage).
 import type { Battle } from './battle';
+import type { Flag, Story } from './chapter1';
 import { CARDS, REWARD_POOL, STARTER_DECK, canUpgrade } from './cards';
 import { ENCOUNTERS } from './enemies';
 import { HEROES, xpToNext } from './heroes';
@@ -8,10 +9,10 @@ import { Rng } from './rng';
 import { HERO_IDS, type CardInst, type HeroId, type Rarity } from './types';
 
 export type NodeType = 'battle' | 'elite' | 'event' | 'inn' | 'shop' | 'treasure' | 'boss';
-export interface MapNode { id: number; row: number; col: number; type: NodeType; next: number[] }
+export interface MapNode { id: number; row: number; col: number; type: NodeType; next: number[]; label?: string; event?: string }
 export interface RunHero { id: HeroId; hp: number; maxHp: number }
 
-export interface RunStats { floors: number; kills: number; damage: number; breaks: number; cardsPlayed: number; elites: number; maxHit: number; limits: number; startedAt: number }
+export interface RunStats { floors: number; kills: number; damage: number; breaks: number; cardsPlayed: number; elites: number; maxHit: number; startedAt: number }
 
 export interface Run {
   v: 1;
@@ -21,10 +22,10 @@ export interface Run {
   level: number;
   xp: number;
   deck: CardInst[];
-  gold: number;
+  /** Crystal Shards: what the Order, Kaldra and every merchant want. Earned by Breaking enemies. */
+  shards: number;
   items: (ItemId | null)[];
   acc: AccId[];
-  limit: number;
   map: MapNode[];
   at: number | null;
   path: number[];
@@ -32,6 +33,11 @@ export interface Run {
   removeCost: number;
   seenEvents: string[];
   stats: RunStats;
+  /** story mode: the chapter's progress across attempts, and what's been done this attempt */
+  story?: Story;
+  flags?: Flag[];
+  /** story mode: the hour of the day (dawn is 6, dusk is 18) */
+  hour?: number;
 }
 
 export const ROWS = 15; // + boss row
@@ -53,9 +59,9 @@ export function newRun(seed = (Math.random() * 2 ** 31) | 0): Run {
   const run: Run = {
     v: 1, seed, rng: seed,
     heroes: HERO_IDS.map(id => ({ id, hp: HEROES[id].hp, maxHp: HEROES[id].hp })),
-    level: 1, xp: 0, deck: [], gold: 99, items: ['potion', null, null], acc: ['charm'], limit: 0,
+    level: 1, xp: 0, deck: [], shards: 60, items: ['potion', null, null], acc: ['charm'],
     map: [], at: null, path: [], uid: 1, removeCost: 75, seenEvents: [],
-    stats: { floors: 0, kills: 0, damage: 0, breaks: 0, cardsPlayed: 0, elites: 0, maxHit: 0, limits: 0, startedAt: Date.now() },
+    stats: { floors: 0, kills: 0, damage: 0, breaks: 0, cardsPlayed: 0, elites: 0, maxHit: 0, startedAt: Date.now() },
   };
   run.deck = STARTER_DECK.map(id => newCard(run, id));
   run.map = withRng(run, genMap);
@@ -120,8 +126,9 @@ export function enterNode(run: Run, id: number): MapNode {
   return n;
 }
 
-export function theme(run: Run): 'ruins' | 'depths' | 'boss' {
+export function theme(run: Run): 'ruins' | 'depths' | 'boss' | 'dusk' {
   const row = currentRow(run);
+  if (run.story) return (run.hour ?? 6) >= 15 ? 'dusk' : 'ruins'; // the light goes as the day does
   return row >= ROWS ? 'boss' : row >= 8 ? 'depths' : 'ruins';
 }
 
@@ -141,7 +148,6 @@ export function battleInit(run: Run, enc: { enemies: string[]; hpScale: number }
     enemies: enc.enemies,
     accessories: run.acc,
     items: run.items,
-    limit: run.limit,
     hpScale: enc.hpScale,
     uidStart: run.uid + 10000,
   };
@@ -149,7 +155,7 @@ export function battleInit(run: Run, enc: { enemies: string[]; hpScale: number }
 
 /** Copy the battle outcome back into the run. KO'd heroes return with 1 HP (or 50% with Phoenix Plume). */
 export function afterBattle(run: Run, b: Battle): void {
-  run.limit = b.limit;
+  run.shards += b.shards + (run.acc.includes('luckyCoin') ? 12 : 0);
   run.items = [...b.items];
   const s = b.stats;
   run.stats.kills += s.kills;
@@ -164,16 +170,14 @@ export function afterBattle(run: Run, b: Battle): void {
   }
 }
 
-export interface Rewards { gold: number; xp: number; cards: string[]; item: ItemId | null; acc: AccId | null }
+export interface Rewards { xp: number; cards: string[]; item: ItemId | null; acc: AccId | null }
 
 export function battleRewards(run: Run, type: NodeType): Rewards {
   return withRng(run, r => {
     const elite = type === 'elite';
-    let gold = elite ? r.range(30, 40) : type === 'boss' ? 100 : r.range(12, 20);
-    if (run.acc.includes('luckyCoin')) gold += 12;
     const xp = Math.round((elite ? 45 : type === 'boss' ? 0 : 20) * (run.acc.includes('tome') ? 1.25 : 1));
     return {
-      gold, xp,
+      xp,
       cards: rollCards(r, 3, elite ? { common: 50, uncommon: 38, rare: 12 } : { common: 60, uncommon: 33, rare: 7 }),
       item: r.chance(elite ? 0.6 : 0.35) ? r.pick(ITEM_IDS) : null,
       acc: elite ? rollAcc(run, r) : null,
@@ -271,8 +275,8 @@ export function restHeal(run: Run): void {
   for (const h of run.heroes) h.hp = Math.min(h.maxHp, h.hp + Math.round(h.maxHp * 0.3));
 }
 
-export function treasure(run: Run): { gold: number; acc: AccId | null } {
-  return withRng(run, r => ({ gold: r.range(25, 45), acc: rollAcc(run, r) }));
+export function treasure(run: Run): { shards: number; acc: AccId | null } {
+  return withRng(run, r => ({ shards: r.range(25, 45), acc: rollAcc(run, r) }));
 }
 
 export function healHero(run: Run, id: HeroId, amount: number) {
@@ -321,9 +325,9 @@ export const EVENTS: EventDef[] = [
   { id: 'traveler', title: 'The Wounded Traveler', sprite: 'traveler',
     text: 'A merchant lies against a broken column, clutching a heavy purse. "Please... the monsters took my escort..."',
     options: run => [
-      { label: 'Tend his wounds', desc: 'Seren loses 8 HP. Gain 60 gold and a Potion.', disabled: run.heroes.find(h => h.id === 'wmage')!.hp <= 8 ? 'Seren is too weak' : undefined,
-        go: run => { damageHero(run, 'wmage', 8); run.gold += 60; addItem(run, 'potion'); return { text: 'He presses coins into Seren\'s hands. "May the light keep you."' }; } },
-      { label: 'Take the purse', desc: 'Gain 110 gold. Add 2 Daze to your deck.', go: run => { run.gold += 110; run.deck.push(newCard(run, 'daze'), newCard(run, 'daze')); return { text: 'His eyes follow you as you walk away. The gold feels heavy.' }; } },
+      { label: 'Tend his wounds', desc: 'Seren loses 8 HP. Gain 60 Shards and a Potion.', disabled: run.heroes.find(h => h.id === 'wmage')!.hp <= 8 ? 'Seren is too weak' : undefined,
+        go: run => { damageHero(run, 'wmage', 8); run.shards += 60; addItem(run, 'potion'); return { text: 'He presses coins into Seren\'s hands. "May the light keep you."' }; } },
+      { label: 'Take the purse', desc: 'Gain 110 Shards. Add 2 Daze to your deck.', go: run => { run.shards += 110; run.deck.push(newCard(run, 'daze'), newCard(run, 'daze')); return { text: 'His eyes follow you as you walk away. The gold feels heavy.' }; } },
       leave,
     ] },
   { id: 'training', title: 'The Old Training Yard', sprite: 'dummy',
@@ -337,9 +341,9 @@ export const EVENTS: EventDef[] = [
     text: 'A tiny, fluffy merchant with an enormous pack bows theatrically. "Kupo—er, greetings! Pom trades in lighter burdens!"',
     options: run => [
       { label: 'Lighten your load', desc: 'Remove a card from your deck for free.', go: () => ({ text: '"A wise traveler carries only what matters!"', follow: { kind: 'remove' } }) },
-      { label: 'Mystery bundle (50g)', desc: 'Gain a random Item and a 30% chance at an Accessory.', disabled: run.gold < 50 ? 'Not enough gold' : run.items.every(i => i) ? 'Item pouch is full' : undefined,
+      { label: 'Mystery bundle (50 Shards)', desc: 'Gain a random Item and a 30% chance at an Accessory.', disabled: run.shards < 50 ? 'Not enough Shards' : run.items.every(i => i) ? 'Item pouch is full' : undefined,
         go: run => {
-          run.gold -= 50;
+          run.shards -= 50;
           const { item, acc } = withRng(run, r => ({ item: r.pick(ITEM_IDS), acc: r.chance(0.3) ? rollAcc(run, r) : null }));
           addItem(run, item);
           if (acc) { addAcc(run, acc); return { text: `Inside: a ${ITEMS[item].name}... and something shiny!`, follow: { kind: 'acc', acc } }; }

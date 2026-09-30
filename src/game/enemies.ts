@@ -121,6 +121,40 @@ const defs: EnemyDef[] = [
         b.apply(e.id, 'ritual', 2);
       }
     } },
+
+  // ───── Chapter 1: Emberfall ─────
+  { id: 'soldier', name: 'Kaldran Soldier', sprite: 'soldier', hp: [26, 30], shield: 3, weak: ['thunder', 'holy'], tier: 'normal',
+    moves: {
+      thrust: { name: 'Spear Thrust', kind: 'attack', dmg: 9, target: 'single' },
+      wall: { name: 'Shield Wall', kind: 'defendBuff', block: 8, self: [['str', 2]] },
+      torch: { name: 'Torch the Thatch', kind: 'attackAll', dmg: 5, target: 'all', fx: 'fire' },
+    },
+    pick: (e, rng) => vary(e, rng, { thrust: 50, wall: 25, torch: 25 }, 1) },
+  { id: 'captain', name: 'Kaldran Captain', sprite: 'captain', hp: [72, 78], shield: 6, weak: ['holy', 'fire'], tier: 'elite',
+    moves: {
+      orders: { name: 'Orders', kind: 'buff', self: [['str', 3]] },
+      lunge: { name: 'Lunge', kind: 'attack', dmg: 17, target: 'lowest' },
+      sweep: { name: 'Halberd Sweep', kind: 'attackAll', dmg: 9, target: 'all' },
+      brace: { name: 'Brace', kind: 'defend', block: 14 },
+    },
+    pick: (e, rng, t) => t === 0 ? 'orders' : vary(e, rng, { lunge: 40, sweep: 35, brace: 25 }, 1) },
+  // the first night: three strokes, and Aldric falls
+  { id: 'ashsteps', name: 'The Ashen Knight', sprite: 'ashknight', hp: [999, 999], shield: 99, weak: [], tier: 'boss',
+    moves: {
+      stroke: { name: 'Ashen Stroke', kind: 'attack', dmg: 20, target: 'single', fx: 'dark' },
+      third: { name: 'The Third Stroke', kind: 'attack', dmg: 99, target: 'single', fx: 'dark' },
+    },
+    pick: (_e, _rng, t) => (t < 2 ? 'stroke' : 'third') },
+  // the hill: he only has to hold them until he can reach Lyra; at half health he hesitates, and they escape
+  { id: 'ashknight', name: 'The Ashen Knight', sprite: 'ashknight', hp: [90, 90], shield: 8, weak: ['holy', 'thunder'], tier: 'boss',
+    moves: {
+      blade: { name: 'Ashen Blade', kind: 'attack', dmg: 12, target: 'single', fx: 'dark' },
+      arc: { name: 'Crystal Arc', kind: 'attackAll', dmg: 7, target: 'all', fx: 'ice' },
+      foreknow: { name: 'He Knows Your Move', kind: 'defendBuff', block: 18, self: [['str', 3]] },
+      forLyra: { name: 'For Her', kind: 'attack', dmg: 18, target: 'lowest', fx: 'dark' },
+    },
+    pick: (e, rng, t) => t === 0 ? 'foreknow' : vary(e, rng, { blade: 40, arc: 30, forLyra: 15, foreknow: 15 }, 1),
+    onHp: (b, e) => { if (e.hp <= e.maxHp / 2) b.finish(true); } },
 ];
 
 export const ENEMIES: Record<string, EnemyDef> = Object.fromEntries(defs.map(d => [d.id, d]));
@@ -130,4 +164,11 @@ export const ENCOUNTERS = {
   normal: [['goblin', 'slime'], ['wisp', 'bat'], ['skeleton', 'sprout'], ['bat', 'bat', 'bat'], ['sprout', 'wisp'], ['goblin', 'goblin'], ['skeleton', 'bat'], ['slime', 'slime', 'slime']],
   elite: [['ogre'], ['paladin']],
   boss: [['wyrm']],
+};
+
+/** Chapter 1 (Emberfall): Kaldra's vanguard, and what the Dimming brings to the edge of the village */
+export const EMBERFALL = {
+  easy: [['soldier'], ['bat', 'bat'], ['wisp']],
+  normal: [['soldier', 'soldier'], ['soldier', 'wisp'], ['soldier', 'bat'], ['wisp', 'wisp'], ['bat', 'bat', 'bat']],
+  elite: [['soldier', 'captain']],
 };

@@ -159,22 +159,6 @@ export const starTex = () => make('star', 64, 64, (g, w) => {
   g.beginPath(); g.moveTo(c, 2); g.lineTo(c + 5, c - 5); g.lineTo(w - 2, c); g.lineTo(c + 5, c + 5); g.lineTo(c, w - 2); g.lineTo(c - 5, c + 5); g.lineTo(2, c); g.lineTo(c - 5, c - 5); g.closePath(); g.fill();
 });
 
-/** Radial rays burst (limit break). */
-export const raysTex = () => make('rays', 512, 512, (g, w) => {
-  const c = w / 2, rng = new Rng(3);
-  g.translate(c, c);
-  for (let i = 0; i < 40; i++) {
-    const a = rng.next() * Math.PI * 2, wd = 0.02 + rng.next() * 0.06, len = c * (0.6 + rng.next() * 0.4);
-    const gr = g.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len);
-    gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0);
-    g.lineTo(Math.cos(a - wd) * len, Math.sin(a - wd) * len); g.lineTo(Math.cos(a + wd) * len, Math.sin(a + wd) * len); g.closePath(); g.fill();
-  }
-  const r = g.createRadialGradient(0, 0, 0, 0, 0, c * 0.35);
-  r.addColorStop(0, 'rgba(255,255,255,0.6)'); r.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = r; g.fillRect(-c, -c, w, w);
-});
-
 /** Vertical beam: soft horizontal falloff, fades at both ends (god rays, light pillars). */
 export const beamTex = () => make('beam', 64, 256, (g, w, h) => {
   const img = g.createImageData(w, h);

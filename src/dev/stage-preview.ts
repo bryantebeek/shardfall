@@ -50,7 +50,6 @@ btn('unbroken', () => stage.setBroken(tgt, false));
 btn('ko', () => stage.ko(tgt));
 btn('ko knight', () => stage.ko('knight'));
 btn('revive knight', () => stage.revive('knight'));
-btn('limit', () => stage.limit('knight'));
 btn('shake', () => stage.shake(0.6));
 btn('flash', () => stage.flash('#ff5533'));
 btn('dots', () => showDots = !showDots);
@@ -99,7 +98,7 @@ if (shot) {
           ['hit', () => stage.hit('e0', 'ice', true)], ['heal', () => stage.heal('knight')], ['block', () => stage.block('knight')],
           ['buff', () => stage.buff('knight')], ['debuff', () => stage.debuff('e0')], ['shatter', () => stage.shatter('e0')],
           ['broken', () => stage.setBroken('e0', true)], ['target', () => stage.setTargeted('e2')], ['active', () => stage.setActive('knight')],
-          ['limit', () => stage.limit('knight')], ['shake', () => stage.shake(0.5)], ['flash', () => stage.flash('#ff5533')],
+          ['shake', () => stage.shake(0.5)], ['flash', () => stage.flash('#ff5533')],
           ['koHero', () => stage.ko('wmage')], ['revive', () => stage.revive('wmage')], ['koEnemy', () => stage.ko('e2')],
           ['unbroken', () => stage.setBroken('e0', false)], ['mode', () => stage.setMode('map', 'depths')], ['units', () => stage.setUnits(party)],
         ];
@@ -108,7 +107,6 @@ if (shot) {
         return;
       }
       if (k === 'shatter') { stage.shatter('e1'); stage.setBroken('e1', true); }
-      else if (k === 'limit') stage.limit('knight');
       else if (k === 'ko') { stage.ko('knight'); stage.ko('e1'); }
       else if (k === 'attack') stage.attack('knight', 'e1');
       else if (['heal', 'buff', 'debuff', 'shield'].includes(k)) stage.cast('wmage', ['knight', 'bmage'], k as 'heal');

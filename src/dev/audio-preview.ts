@@ -69,7 +69,7 @@ async function selftest() {
   try {
     line('mix:boss+sfx', await render(6, e => {
       new Player(e, getSong('boss'), 0.02, 0.01).pump(6);
-      for (const [i, n] of (['bigHit', 'break', 'thunder', 'fire', 'limit', 'hit', 'slash'] as const).entries()) playSfx(e, n, 0.5 + i * 0.1);
+      for (const [i, n] of (['bigHit', 'break', 'thunder', 'fire', 'surge', 'hit', 'slash'] as const).entries()) playSfx(e, n, 0.5 + i * 0.1);
     }), 6);
   } catch (err) { fails++; out.push(`mix ERROR ${err}`); }
 

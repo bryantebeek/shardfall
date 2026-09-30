@@ -67,9 +67,6 @@ const defs: CardDef[] = [
   { id: 'laststand', name: 'Last Stand', hero: 'knight', cost: 2, type: 'attack', rarity: 'rare', target: 'enemy', el: 'phys', art: 'laststand',
     text: 'Deal {D} damage. Double if Knight is below half HP.', v: { D: [15, 21] },
     play: (b, c) => b.attack(c, c.owner.hp * 2 < c.owner.maxHp ? c.D * 2 : c.D, 'phys') },
-  { id: 'aegisrend', name: 'Aegis Rend', hero: 'knight', cost: 0, type: 'limit', rarity: 'special', target: 'allEnemies', el: 'phys', art: 'aegis', exhaust: true,
-    text: 'LIMIT. Deal {D} damage to ALL enemies. ALL allies gain {B} *Block*.', v: { D: [22, 22], B: [12, 12] },
-    play: (b, c) => { b.attackAll(c, c.D, 'phys'); b.aliveHeroes().forEach(h => b.gainBlock(h.id, c.B)); } },
 
   // ───────────── Black Mage ─────────────
   { id: 'fire', name: 'Fire', hero: 'bmage', cost: 1, type: 'attack', rarity: 'starter', target: 'enemy', el: 'fire', art: 'fire',
@@ -100,7 +97,7 @@ const defs: CardDef[] = [
   { id: 'thunderstorm', name: 'Thunderstorm', hero: 'bmage', cost: 2, type: 'attack', rarity: 'uncommon', target: 'randomEnemy', el: 'thunder', art: 'thunder',
     text: 'Deal {D} Thunder damage to a random enemy {M} times.', v: { D: [4, 5], M: [4, 4] }, play: (b, c) => b.attackRandom(c, c.D, 'thunder', c.M) },
   { id: 'manasurge', name: 'Mana Surge', hero: 'bmage', cost: 0, type: 'skill', rarity: 'uncommon', target: 'none', art: 'surge', fx: 'buff', exhaust: true,
-    text: 'Gain {M} energy. *Exhaust*.', v: { M: [1, 2] }, play: (b, c) => b.gainEnergy(c.M) },
+    text: 'Give back {M} *Action*. *Exhaust*.', v: { M: [1, 2] }, play: (b, c) => b.ready(c.M, c.owner.id) },
   { id: 'focus', name: 'Arcane Focus', hero: 'bmage', cost: 1, type: 'power', rarity: 'uncommon', target: 'self', art: 'focus', fx: 'buff',
     text: 'Black Mage gains {M} *Strength*.', v: { M: [2, 3] }, play: (b, c) => b.apply(c.owner.id, 'str', c.M) },
   { id: 'prism', name: 'Prismatic Ray', hero: 'bmage', cost: 2, type: 'attack', rarity: 'rare', target: 'enemy', el: 'fire', art: 'prism',
@@ -108,9 +105,6 @@ const defs: CardDef[] = [
     play: (b, c) => { b.attack(c, c.D, 'fire'); b.attack(c, c.D, 'ice'); b.attack(c, c.D, 'thunder'); } },
   { id: 'flare', name: 'Flare', hero: 'bmage', cost: 3, type: 'attack', rarity: 'rare', target: 'enemy', el: 'fire', art: 'flare',
     text: 'Deal {D} Fire damage.', v: { D: [30, 40] }, play: (b, c) => b.attack(c, c.D, 'fire') },
-  { id: 'cataclysm', name: 'Cataclysm', hero: 'bmage', cost: 0, type: 'limit', rarity: 'special', target: 'allEnemies', el: 'fire', art: 'cataclysm', exhaust: true,
-    text: 'LIMIT. Deal {D} Fire, {D} Ice and {D} Thunder damage to ALL enemies.', v: { D: [10, 10] },
-    play: (b, c) => { b.attackAll(c, c.D, 'fire'); b.attackAll(c, c.D, 'ice'); b.attackAll(c, c.D, 'thunder'); } },
 
   // ───────────── White Mage ─────────────
   { id: 'cure', name: 'Cure', hero: 'wmage', cost: 1, type: 'skill', rarity: 'starter', target: 'ally', art: 'cure', fx: 'heal',
@@ -141,14 +135,11 @@ const defs: CardDef[] = [
   { id: 'prayer', name: 'Prayer', hero: 'wmage', cost: 1, type: 'power', rarity: 'uncommon', target: 'self', art: 'prayer', fx: 'heal',
     text: 'At the start of your turn, heal the most wounded ally {M} HP.', v: { M: [3, 4] }, play: (b, c) => b.apply(c.owner.id, 'prayer', c.M) },
   { id: 'miracle', name: 'Miracle', hero: 'wmage', cost: 1, costUp: 0, type: 'skill', rarity: 'rare', target: 'none', art: 'miracle', fx: 'buff', exhaust: true,
-    text: 'Gain 2 energy. Draw 2 cards. *Exhaust*.', play: b => { b.gainEnergy(2); b.draw(2); } },
+    text: 'Give back 2 *Action*. Draw 2 cards. *Exhaust*.', play: (b, c) => { b.ready(2, c.owner.id); b.draw(2); } },
   { id: 'benediction', name: 'Benediction', hero: 'wmage', cost: 2, type: 'skill', rarity: 'rare', target: 'allAllies', art: 'benediction', fx: 'heal', exhaust: true,
     text: 'Heal ALL allies {H} HP. *Exhaust*.', v: { H: [14, 20] }, play: (b, c) => b.aliveHeroes().forEach(h => b.heal(h.id, c.H)) },
   { id: 'angelward', name: 'Angel Ward', hero: 'wmage', cost: 2, costUp: 1, type: 'power', rarity: 'rare', target: 'self', art: 'angel', fx: 'shield',
     text: 'At the start of your turn, ALL allies gain {M} *Block*.', v: { M: [3, 3] }, play: (b, c) => b.apply(c.owner.id, 'ward', c.M) },
-  { id: 'seraphim', name: 'Seraphim', hero: 'wmage', cost: 0, type: 'limit', rarity: 'special', target: 'allAllies', art: 'seraphim', fx: 'heal', exhaust: true,
-    text: 'LIMIT. Revive ALL KO\'d allies. Heal ALL allies {H} HP and remove their debuffs.', v: { H: [20, 20] },
-    play: (b, c) => { b.heroes.filter(h => h.hp <= 0).forEach(h => b.revive(h.id, 0.01)); b.aliveHeroes().forEach(h => { b.heal(h.id, c.H); b.cleanse(h.id); }); } },
 
   // ───────────── Status ─────────────
   { id: 'daze', name: 'Daze', hero: null, cost: 0, type: 'status', rarity: 'special', target: 'none', art: 'daze', unplayable: true, ethereal: true,
@@ -175,7 +166,7 @@ export function cardVal(c: CardInst, k: Val): number {
 
 export function cardExhausts(c: CardInst): boolean {
   const d = cardDef(c.id);
-  if (d.type === 'power' || d.type === 'limit') return true;
+  if (d.type === 'power') return true;
   return c.upgraded && d.exhaustUp !== undefined ? d.exhaustUp : !!d.exhaust;
 }
 
@@ -190,7 +181,7 @@ export function cardText(c: CardInst): string {
 
 export function canUpgrade(c: CardInst): boolean {
   const d = cardDef(c.id);
-  return !c.upgraded && d.type !== 'status' && d.type !== 'limit';
+  return !c.upgraded && d.type !== 'status';
 }
 
 export const STARTER_DECK = ['slash', 'slash', 'guard', 'guard', 'fire', 'blizzard', 'thunder', 'scan', 'cure', 'protect', 'holy', 'holy'];
@@ -208,5 +199,6 @@ export const KEYWORDS: Record<string, string> = {
   Regen: 'Heals HP equal to Regen at the start of turn, then Regen decreases by 1.',
   Thorns: 'Attackers take this much damage.',
   Exhaust: 'Removed until the end of combat.',
+  Action: 'Each hero has one Action per turn. Cards that cost time spend their hero\'s Action; a hero with none left can only play Swift cards.',
   Ethereal: 'Exhausted if still in hand at the end of your turn.',
 };

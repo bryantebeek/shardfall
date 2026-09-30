@@ -22,11 +22,13 @@ const EL_SFX: Record<Element, Sfx> = { phys: 'slash', fire: 'fire', ice: 'ice', 
 
 type Aim = { kind: 'card'; uid: string; sticky: boolean } | { kind: 'item'; slot: number };
 
-export async function battleScreen(run: Run, type: NodeType, enemies?: string[]): Promise<boolean> {
+/** `setup` adjusts the battle before it starts (e.g. what a Memory reveals); `theme` overrides the lighting. */
+export async function battleScreen(run: Run, type: NodeType, enemies?: string[], opts: { theme?: 'ruins' | 'dusk'; setup?: (b: Battle) => void } = {}): Promise<boolean> {
   const enc = enemies ? { enemies, hpScale: 1 } : encounter(run, type);
   const b = new Battle(battleInit(run, enc));
+  opts.setup?.(b);
   const { stage, audio } = app;
-  stage.setMode('battle', type === 'boss' ? 'boss' : theme(run));
+  stage.setMode('battle', opts.theme ?? (type === 'boss' && !run.story ? 'boss' : theme(run)));
   stage.setUnits([
     ...b.heroes.map(h => ({ id: h.id, sprite: h.id, side: 'hero' as const })),
     ...b.enemies.map(e => ({ id: e.id, sprite: e.sprite, side: 'enemy' as const })),
@@ -37,11 +39,6 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
   const units = h('div.units');
   const hand = h('div.hand');
   const arrow = svgArrow();
-  const energyOrb = h('div.energy', { 'data-tip': '<b>Energy</b><br>Spent to play cards. Refills each turn.' }, h('div.energy-ring'), h('span.energy-num'));
-  const limitFill = h('div.limit-fill');
-  const limitBtn = btn('LIMIT BREAK', () => doLimit(), 'limit-btn');
-  const limitBox = h('div.limit', { 'data-tip': '<b>Limit Gauge</b><br>Fills as your party deals and takes damage. When full, unleash every living hero\'s Limit card. Persists between battles.' },
-    h('div.limit-label', 'LIMIT'), h('div.limit-bar', limitFill, h('div.limit-shine')), h('span.limit-num'), limitBtn);
   const drawPile = h('div.pile.draw-pile', { 'data-tip': '<b>Draw Pile</b><br>Click to view.' }, img(uiIconUrl('deck')), h('span'));
   const discardPile = h('div.pile.discard-pile', { 'data-tip': '<b>Discard Pile</b><br>Click to view.' }, img(uiIconUrl('discard')), h('span'));
   const exhaustPile = h('div.pile.exhaust-pile', { 'data-tip': '<b>Exhausted</b><br>Removed for this battle.' }, img(uiIconUrl('exhaust')), h('span'));
@@ -51,10 +48,10 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
   const endBtn = btn(h('span', 'End Turn'), () => endTurn(), 'end-turn');
   endBtn.dataset.tip = '<b>End Turn</b><br>Shortcut: <b>E</b>. Number keys pick cards.';
   // first-time guidance, until the first card of the run is played
-  const hint = run.stats.cardsPlayed === 0 ? h('div.battle-hint', 'Drag a card onto a target to play it · Hover anything for details') : null;
+  const hint = run.stats.cardsPlayed === 0 ? h('div.battle-hint', 'Each hero acts once a turn · Drag a card onto a target · Break enemies for Shards') : null;
   const moveBanner = h('div.move-banner');
   const topbarSlot = h('div');
-  const root = mount(h('div.battle', topbarSlot, units, moveBanner, h('div.bottom-shade'), hint, hand, energyOrb, limitBox, drawPile, discardPile, exhaustPile, endBtn, arrow.svg));
+  const root = mount(h('div.battle', topbarSlot, units, moveBanner, h('div.bottom-shade'), hint, hand, drawPile, discardPile, exhaustPile, endBtn, arrow.svg));
 
   let busy = true;
   let finish: (won: boolean) => void = () => {};
@@ -67,7 +64,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
   const cardEls = new Map<string, HTMLElement>();
   const hud = new Map<string, UnitHud>();
 
-  const renderTop = () => topbarSlot.replaceChildren(topBar(run, { items: b.items, onItem: slot => onItem(slot) }));
+  const renderTop = () => topbarSlot.replaceChildren(topBar(run, { items: b.items, onItem: slot => onItem(slot), shards: run.shards + b.shards }));
   renderTop();
 
   // ───────────── unit HUDs ─────────────
@@ -94,7 +91,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
 
 
   // ───────────── HUD construction/sync ─────────────
-  interface UnitHud { el: HTMLElement; hit: HTMLElement; hp: HTMLElement; lag: HTMLElement; hpText: HTMLElement; block: HTMLElement; statuses: HTMLElement; shield?: HTMLElement; weak?: HTMLElement; intentBox?: HTMLElement; shown: { hp: number; block: number } }
+  interface UnitHud { el: HTMLElement; hit: HTMLElement; hp: HTMLElement; lag: HTMLElement; hpText: HTMLElement; block: HTMLElement; statuses: HTMLElement; shield?: HTMLElement; weak?: HTMLElement; intentBox?: HTMLElement; act?: HTMLElement; shown: { hp: number; block: number } }
 
   function makeHud(u: HeroF | EnemyF): UnitHud {
     const isEnemy = u.side === 'enemy';
@@ -107,6 +104,11 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
       h('div.hp-bar', lag, hp, hpText, block),
       statuses);
     const uh: UnitHud = { el: h('div.unit.' + u.side, { 'data-id': u.id }, hit, plate), hit, hp, lag, hpText, block, statuses, shown: { hp: u.hp, block: u.block } };
+    if (!isEnemy) {
+      // this hero's Action for the turn
+      uh.act = h('div.act-pip');
+      plate.querySelector('.plate-name')!.prepend(uh.act);
+    }
     if (isEnemy) {
       uh.shield = h('div.shield-badge', { 'data-tip': '<b>Shield</b><br>Hit this enemy\'s weaknesses to reduce its Shield. At 0 it is <b>Broken</b>: it loses its next action and takes 50% more damage.' }, h('span'));
       uh.weak = h('div.weak-row');
@@ -192,8 +194,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
       hud.get(u.id)!.el.classList.toggle('ko', u.side === 'hero' ? u.hp <= 0 : (u as EnemyF).dead);
       if (u.side === 'enemy') { setBreak(u as EnemyF); setIntent(u as EnemyF); }
     }
-    setEnergy(b.energy);
-    setLimit(b.limit);
+    setActs();
     drawPile.querySelector('span')!.textContent = String(b.drawPile.length);
     discardPile.querySelector('span')!.textContent = String(b.discard.length);
     exhaustPile.querySelector('span')!.textContent = String(b.exhaust.length);
@@ -202,15 +203,19 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
     refreshPlayable();
   }
 
-  function setEnergy(v: number) {
-    energyOrb.querySelector('.energy-num')!.textContent = `${v}/${b.maxEnergy}`;
-    energyOrb.classList.toggle('empty', v === 0);
+  /** each hero's Action: ready, spent, or recovering from a Heavy card */
+  function actState(hr: HeroF): { cls: string; tip: string } {
+    if (hr.hp <= 0) return { cls: 'ko', tip: 'KO\'d' };
+    if (hr.acts > 0) return { cls: 'ready', tip: `<b>${hr.name} is ready</b><br>One Action this turn.` };
+    if (hr.winded) return { cls: 'winded', tip: `<b>${hr.name} is recovering</b><br>Back in ${hr.winded + 1} turn${hr.winded ? 's' : ''}. Swift cards still work.` };
+    return { cls: 'spent', tip: `<b>${hr.name} has acted</b><br>Only Swift cards until next turn.` };
   }
-
-  function setLimit(v: number) {
-    limitFill.style.width = v + '%';
-    limitBox.querySelector('.limit-num')!.textContent = `${Math.floor(v)}%`;
-    limitBox.classList.toggle('full', v >= 100);
+  function setActs() {
+    for (const hr of b.heroes) {
+      const el = hud.get(hr.id)!.act!, st = actState(hr);
+      el.className = 'act-pip ' + st.cls;
+      el.dataset.tip = st.tip;
+    }
   }
 
   // ───────────── hand ─────────────
@@ -233,11 +238,15 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
   }
 
   let hoverCard: string | null = null;
+  const ORDER: (HeroId | null)[] = ['knight', 'bmage', 'wmage', null];
+  const byHero = (c: CardInst) => ORDER.indexOf(cardDef(c.id).hero ?? null);
+  /** one fanned hand, sorted by hero */
   function layout() {
-    const n = b.hand.length;
+    const ordered = [...b.hand].sort((x, y) => byHero(x) - byHero(y));
+    const n = ordered.length;
     const spacing = Math.min(212, 980 / Math.max(1, n - 1)); // wide enough that small hands don't cover each other's text
-    const hi = b.hand.findIndex(c => c.uid === hoverCard);
-    b.hand.forEach((c, i) => {
+    const hi = ordered.findIndex(c => c.uid === hoverCard);
+    ordered.forEach((c, i) => {
       const el = cardEls.get(c.uid);
       if (!el || (aim?.kind === 'card' && aim.uid === c.uid)) return;
       const off = i - (n - 1) / 2;
@@ -259,7 +268,6 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
       const ok = !busy && b.canPlay(c).ok;
       el.classList.toggle('playable', ok);
       el.classList.toggle('dead-owner', !!cardDef(c.id).hero && b.hero(cardDef(c.id).hero!).hp <= 0);
-      el.querySelector('.card-cost')?.classList.toggle('short', cardCost(c) > b.energy);
     }
   }
 
@@ -467,14 +475,6 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
     afterAction();
   }
 
-  async function doLimit() {
-    if (busy || b.limit < 100) return;
-    busy = true;
-    await playback(b.useLimit());
-    run.stats.limits++;
-    afterAction();
-  }
-
   async function endTurn() {
     if (busy || b.over) return;
     if (aim) cancelAim();
@@ -612,7 +612,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
       case 'phase':
         stage.flash('#e0b0ff');
         stage.shake(1);
-        audio.sfx('limit');
+        audio.sfx('surge');
         await banner(ev.name, 'boss', 1300);
         syncAll();
         return;
@@ -660,21 +660,8 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[])
         popup(ev.id, ev.text, 'status-tag');
         await wait(400);
         return;
-      case 'energy': setEnergy(ev.value); return;
-      case 'limit': {
-        const was = limitBox.classList.contains('full');
-        setLimit(ev.value);
-        if (ev.value >= 100 && !was) { audio.sfx('limitReady'); toast('Limit Break ready!'); }
-        return;
-      }
-      case 'limitBreak': {
-        audio.sfx('limit');
-        banner('Limit Break', 'limit', 1300);
-        await stage.limit(ev.heroes[0] ?? 'knight');
-        renderHand();
-        await wait(300);
-        return;
-      }
+      case 'actions': setActs(); refreshPlayable(); layout(); return;
+      case 'shards': popup(ev.id, `+${ev.amount} Shards`, 'shard-tag', uiIconUrl('crystal')); audio.sfx('gold'); renderTop(); return;
       case 'draw':
         audio.sfx('cardDraw');
         renderHand();

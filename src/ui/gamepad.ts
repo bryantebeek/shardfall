@@ -9,7 +9,7 @@ const FOCUSABLE = [
   '.shop-item:not(.sold)', '.chest:not(.open)', '.tb-item:not(.empty)', '.pile', 'input[type=range]',
 ].join(', ');
 /** Where focus lands when a screen opens, in order of preference. */
-const PREFER = ['.hand .card.playable', '.end-turn', '.hand .card', '.map-node.avail', '.reward-row', '.title-btn.primary', '.card.pickable', '.event-btn',
+const PREFER = ['.dlg-next', '.memory-card .big-btn', '.chapter-card .big-btn', '.hand .card.playable', '.end-turn', '.hand .card', '.map-node.avail', '.reward-row', '.title-btn.primary', '.card.pickable', '.event-btn',
   '.inn-btn', '.chest', '.shop-slot', '.hero-pick-btn', '.big-btn', '.skip-btn'];
 /** Virtual point an untargeted card is released at (above the play line in battle.ts). */
 const PLAY_AT: [number, number] = [960, 420];

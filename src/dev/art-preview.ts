@@ -4,7 +4,7 @@ import type { HeroId, SpriteId } from '../game/types';
 
 const q = new URLSearchParams(location.search);
 const scale = Number(q.get('s') ?? 4);
-const all: SpriteId[] = ['knight', 'bmage', 'wmage', 'slime', 'goblin', 'bat', 'skeleton', 'wisp', 'sprout', 'ogre', 'paladin', 'wyrm'];
+const all: SpriteId[] = ['knight', 'bmage', 'wmage', 'slime', 'goblin', 'bat', 'skeleton', 'wisp', 'sprout', 'ogre', 'paladin', 'wyrm', 'soldier', 'captain', 'ashknight'];
 const ids = q.get('only') ? (q.get('only')!.split(',') as SpriteId[]) : all;
 const app = document.getElementById('app')!;
 

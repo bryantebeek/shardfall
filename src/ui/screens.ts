@@ -3,14 +3,16 @@ import { canUpgrade, cardDef } from '../game/cards';
 import { HEROES, xpToNext } from '../game/heroes';
 import { ACCESSORIES, ITEMS, type AccId, type ItemId } from '../game/loot';
 import {
-  EVENTS, ROWS, addAcc, addItem, battleRewards, gainXp, healHero, levelUpChoices, newCard, nodeById, pickEvent, reachable, removeCard,
-  restHeal, shopStock, treasure, upgradeCard, type EventFollowUp, type NodeType, type Run,
+  addAcc, addItem, battleRewards, gainXp, healHero, levelUpChoices, newCard, nodeById, pickEvent, reachable, removeCard,
+  restHeal, shopStock, treasure, upgradeCard, type EventDef, type EventFollowUp, type NodeType, type Run,
 } from '../game/run';
 import type { CardArt, CardInst, HeroId } from '../game/types';
-import { app, banner, btn, confirmBtn, modal, mount, toast } from './app';
+import { app, btn, confirmBtn, modal, mount, toast } from './app';
 import { cardEl } from './card';
-import { h, img, wait } from './dom';
+import { h, img } from './dom';
 import { refreshTopBar, topBar } from './hud';
+import { HOURS, clock } from '../game/chapter1';
+import { dayPanel, memoriesPanel } from './story';
 
 // ───────────────────────── title ─────────────────────────
 export function titleScreen(hasSave: boolean): Promise<'new' | 'continue'> {
@@ -20,7 +22,7 @@ export function titleScreen(hasSave: boolean): Promise<'new' | 'continue'> {
   return new Promise(resolve => {
     mount(h('div.title-screen',
       h('div.logo',
-        h('div.logo-sub-top', 'A Crystal Spire Chronicle'),
+        h('div.logo-sub-top', 'Every fall, they remember a little more'),
         h('h1.logo-text', 'Shardfall'),
         h('div.logo-rule'),
       ),
@@ -34,39 +36,21 @@ export function titleScreen(hasSave: boolean): Promise<'new' | 'continue'> {
   });
 }
 
-export function partyIntro(): Promise<void> {
-  app.stage.setMode('map', 'ruins');
-  return new Promise(resolve => {
-    mount(h('div.intro-screen',
-      h('h2.screen-title', 'The Party'),
-      h('p.screen-sub', 'Three wanderers climb the Shardfall Spire, where the crystal that once lit the world has turned to ruin.'),
-      h('div.intro-cards', (['knight', 'bmage', 'wmage'] as HeroId[]).map((id, i) => {
-        const d = HEROES[id];
-        return h('div.intro-hero.hero-' + id, { style: `animation-delay:${i * 0.15}s` },
-          h('div.intro-portrait', img(portraitUrl(id))),
-          h('div.intro-name', d.name), h('div.intro-job', d.job),
-          h('div.intro-hp', `${d.hp} HP`),
-          h('p.intro-blurb', d.blurb));
-      })),
-      btn('Begin the Ascent', () => resolve(), 'big-btn'),
-    ));
-  });
-}
-
 // ───────────────────────── map ─────────────────────────
 const NODE_NAMES: Record<NodeType, string> = { battle: 'Battle', elite: 'Elite Battle', event: 'Mystery', inn: 'Inn', shop: 'Merchant', treasure: 'Treasure', boss: 'Boss' };
 const NODE_TIPS: Record<NodeType, string> = {
   battle: 'Fight a group of monsters.', elite: 'A powerful foe. Guards an Accessory and more XP.', event: 'Something unusual awaits...',
-  inn: 'Rest to heal, or train to upgrade a card.', shop: 'Spend gold on cards, Accessories and Items.', treasure: 'A chest with gold and an Accessory.', boss: 'The master of this spire.',
+  inn: 'Rest to heal, or train to upgrade a card.', shop: 'Spend Shards on cards, Accessories and Items.', treasure: 'A chest with Shards and an Accessory.', boss: 'The master of this spire.',
 };
 const ROW_H = 118, MAP_W = 860;
 
-export function mapScreen(run: Run, theme: 'ruins' | 'depths' | 'boss'): Promise<number> {
+export function mapScreen(run: Run, theme: 'ruins' | 'depths' | 'boss' | 'dusk'): Promise<number> {
   app.stage.setMode('map', theme);
   app.stage.setUnits([]);
   app.audio.music('map');
   const avail = new Set(reachable(run));
   const visited = new Set(run.path);
+  const ROWS = Math.max(...run.map.map(n => n.row)); // the boss row
   const height = (ROWS + 1) * ROW_H + 160;
   const pos = (id: number) => {
     const n = nodeById(run, id);
@@ -92,8 +76,15 @@ export function mapScreen(run: Run, theme: 'ruins' | 'depths' | 'boss'): Promise
     const nodes = run.map.map(n => {
       const p = pos(n.id);
       const cls = ['map-node', `t-${n.type}`, avail.has(n.id) ? 'avail' : '', visited.has(n.id) ? 'visited' : '', run.at === n.id ? 'current' : ''].filter(Boolean).join('.');
-      const el = h('div.' + cls, { style: `left:${p.x}px; top:${p.y}px`, 'data-tip': `<b>${NODE_NAMES[n.type]}</b><br>${NODE_TIPS[n.type]}` },
-        h('div.map-node-ring'), img(uiIconUrl(n.type)));
+      // story mode: every stop is a named place, and costs part of the day
+      const hours = run.story ? HOURS[n.type] : 0;
+      const tip = run.story
+        ? `<b>${n.label}</b><br>${NODE_NAMES[n.type]}. ${NODE_TIPS[n.type]}${hours ? `<br>Takes ${hours} hour${hours > 1 ? 's' : ''}: you'd leave at ${clock((run.hour ?? 6) + hours)}.` : ''}`
+        : `<b>${NODE_NAMES[n.type]}</b><br>${NODE_TIPS[n.type]}`;
+      const el = h('div.' + cls, { style: `left:${p.x}px; top:${p.y}px`, 'data-tip': tip },
+        h('div.map-node-ring'), img(uiIconUrl(n.type)),
+        run.story ? h('div.map-node-label', n.label ?? '') : null,
+        hours ? h('div.map-node-cost', `${hours}h`) : null);
       if (avail.has(n.id)) el.addEventListener('click', () => { app.audio.sfx('map'); resolve(n.id); });
       el.addEventListener('pointerenter', () => avail.has(n.id) && app.audio.sfx('hover'));
       return el;
@@ -101,9 +92,14 @@ export function mapScreen(run: Run, theme: 'ruins' | 'depths' | 'boss'): Promise
     const scroller = h('div.map-scroll', h('div.map-canvas', { style: `height:${height}px; width:${MAP_W}px` }, svg as unknown as HTMLElement, nodes));
     const root = mount(h('div.map-screen',
       topBar(run),
-      h('div.map-title', h('div.map-title-name', 'Shardfall Spire'), h('div.map-title-sub', 'Choose your path')),
+      run.story
+        ? h('div.map-title', h('div.map-title-name', 'Emberfall'), h('div.map-title-sub', 'Get Seren and the Hourglass out before dusk'))
+        : h('div.map-title', h('div.map-title-name', 'Shardfall Spire'), h('div.map-title-sub', 'Choose your path')),
+      run.story ? memoriesPanel(run.story) : null,
       h('div.map-frame', scroller),
-      h('div.map-legend', h('div.legend-title', 'Legend'), (Object.keys(NODE_NAMES) as NodeType[]).map(t => h('div.legend-row', img(uiIconUrl(t)), NODE_NAMES[t]))),
+      run.story
+        ? dayPanel(run.hour ?? 6)
+        : h('div.map-legend', h('div.legend-title', 'Legend'), (Object.keys(NODE_NAMES) as NodeType[]).map(t => h('div.legend-row', img(uiIconUrl(t)), NODE_NAMES[t]))),
     ));
     void root;
     requestAnimationFrame(() => {
@@ -142,7 +138,6 @@ export async function rewardsScreen(run: Run, type: NodeType): Promise<void> {
       const row = btn(h('div.reward-row-inner', img(icon), h('span', label)), () => { if (onTake(row) !== false) { row.classList.add('taken'); row.setAttribute('disabled', ''); } }, 'reward-row');
       list.append(row);
     };
-    addRow(uiIconUrl('gold'), `${r.gold} Gold`, () => { run.gold += r.gold; app.audio.sfx('gold'); refresh(); });
     if (r.item) addRow(uiIconUrl(ITEMS[r.item].icon), ITEMS[r.item].name, () => {
       if (!addItem(run, r.item!)) { toast('Item pouch is full'); app.audio.sfx('error'); return false; }
       app.audio.sfx('select'); refresh();
@@ -294,10 +289,10 @@ export function treasureScreen(run: Run): Promise<void> {
       if (chest.classList.contains('open')) return;
       chest.classList.add('open');
       app.audio.sfx('chest');
-      run.gold += t.gold;
+      run.shards += t.shards;
       if (t.acc) addAcc(run, t.acc);
       setTimeout(() => app.audio.sfx('gold'), 300);
-      loot.append(h('div.loot-row', img(uiIconUrl('gold')), `${t.gold} Gold`));
+      loot.append(h('div.loot-row', img(uiIconUrl('crystal')), `${t.shards} Shards`));
       if (t.acc) loot.append(h('div.loot-row', { 'data-tip': ACCESSORIES[t.acc].text }, img(accessoryIconUrl(t.acc)), h('div', h('b', ACCESSORIES[t.acc].name), h('small', ACCESSORIES[t.acc].text))));
       win.querySelector('.hint')?.remove();
       win.append(btn('Continue', () => resolve(), 'big-btn'));
@@ -313,11 +308,11 @@ export function shopScreen(run: Run): Promise<void> {
   return new Promise(resolve => {
     const topSlot = h('div', topBar(run));
     const body = h('div.shop-body');
-    const priceTag = (p: number) => h('div.price' + (run.gold < p ? '.poor' : ''), img(uiIconUrl('gold')), p);
+    const priceTag = (p: number) => h('div.price' + (run.shards < p ? '.poor' : ''), img(uiIconUrl('crystal')), p);
     const buy = (price: number, f: () => boolean | void) => {
-      if (run.gold < price) { app.audio.sfx('error'); toast('Not enough gold'); return; }
+      if (run.shards < price) { app.audio.sfx('error'); toast('Not enough Shards'); return; }
       if (f() === false) return;
-      run.gold -= price;
+      run.shards -= price;
       app.audio.sfx('purchase');
       render();
     };
@@ -349,8 +344,8 @@ export function shopScreen(run: Run): Promise<void> {
             const el = h('div.shop-item' + (stock.removeUsed ? '.sold' : ''), { 'data-tip': '<b>Card Removal</b><br>Remove a card from your deck. Price rises with each use.' },
               img(uiIconUrl('exhaust')), h('span.shop-item-name', 'Remove a card'), stock.removeUsed ? h('div.sold-tag', 'Sold') : priceTag(run.removeCost));
             if (!stock.removeUsed) el.addEventListener('click', async () => {
-              if (run.gold < run.removeCost) { app.audio.sfx('error'); toast('Not enough gold'); return; }
-              if (await pickCard(run, 'remove')) { run.gold -= run.removeCost; run.removeCost += 25; stock.removeUsed = true; render(); }
+              if (run.shards < run.removeCost) { app.audio.sfx('error'); toast('Not enough Shards'); return; }
+              if (await pickCard(run, 'remove')) { run.shards -= run.removeCost; run.removeCost += 25; stock.removeUsed = true; render(); }
             });
             return el;
           })()),
@@ -368,9 +363,7 @@ export function shopScreen(run: Run): Promise<void> {
 // ───────────────────────── events ─────────────────────────
 const EVENT_ART: Record<string, CardArt> = { crystal: 'prism', book: 'focus', traveler: 'cure', dummy: 'warcry', merchant: 'miracle', fountain: 'purify' };
 
-export function eventScreen(run: Run): Promise<void> {
-  const ev = pickEvent(run);
-  void EVENTS;
+export function eventScreen(run: Run, ev: EventDef = pickEvent(run)): Promise<void> {
   return new Promise(resolve => {
     const topSlot = h('div', topBar(run));
     const text = h('p.window-text.event-text', ev.text);
@@ -442,16 +435,9 @@ export function endScreen(run: Run, won: boolean): Promise<void> {
       h('h1.end-title', won ? 'The Spire Is Cleansed' : 'Your Journey Ends'),
       h('p.end-sub', won ? 'The Crystal Wyrm falls, and light returns to Shardfall.' : 'The spire claims another party of hopefuls...'),
       h('div.window.end-stats',
-        [['Floor reached', String(s.floors)], ['Party level', String(run.level)], ['Enemies defeated', String(s.kills)], ['Breaks', String(s.breaks)],
-          ['Limit Breaks', String(s.limits)], ['Damage dealt', String(s.damage)], ['Biggest hit', String(s.maxHit)], ['Cards played', String(s.cardsPlayed)], ['Deck size', String(run.deck.length)], ['Time', `${mins} min`]]
+        [['Floor reached', String(s.floors)], ['Party level', String(run.level)], ['Enemies defeated', String(s.kills)], ['Breaks', String(s.breaks)], ['Damage dealt', String(s.damage)], ['Biggest hit', String(s.maxHit)], ['Cards played', String(s.cardsPlayed)], ['Deck size', String(run.deck.length)], ['Time', `${mins} min`]]
           .map(([k, v]) => h('div.stat-row', h('span', k), h('b', v)))),
       btn('Return to Title', () => resolve(), 'big-btn'),
     ));
   });
-}
-
-export async function bossIntro() {
-  app.audio.music('none');
-  await banner('A great presence stirs...', 'boss', 1600);
-  await wait(200);
 }

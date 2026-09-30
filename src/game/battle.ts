@@ -2,14 +2,20 @@
 // presentation layer plays back (animations, numbers, sounds). No DOM here.
 import { cardCost, cardDef, cardExhausts, cardVal, type CardDef } from './cards';
 import { ENEMIES, type EnemyDef, type Move } from './enemies';
-import { HAND_SIZE, HEROES, MAX_HAND, STARTING_ENERGY } from './heroes';
+import { HAND_SIZE, HEROES, MAX_HAND } from './heroes';
 import { ITEMS, type AccId, type ItemId } from './loot';
 import { Rng } from './rng';
 import type { CardInst, Element, HeroId, Intent, SpriteId, StatusId, Statuses } from './types';
 import type { CastKind } from '../render/api';
 
 export interface Fighter { id: string; name: string; hp: number; maxHp: number; block: number; st: Statuses }
-export interface HeroF extends Fighter { side: 'hero'; id: HeroId }
+export interface HeroF extends Fighter {
+  side: 'hero'; id: HeroId;
+  /** Actions left this turn (one per turn; cards that cost 1+ spend it) */
+  acts: number;
+  /** turns still to sit out after a Heavy card */
+  winded: number;
+}
 export interface EnemyF extends Fighter {
   side: 'enemy';
   def: string;
@@ -48,9 +54,8 @@ export type Ev =
   | { t: 'ko'; id: string }
   | { t: 'revive'; id: string; hp: number }
   | { t: 'text'; id: string; text: string }
-  | { t: 'energy'; value: number }
-  | { t: 'limit'; value: number }
-  | { t: 'limitBreak'; heroes: HeroId[] }
+  | { t: 'actions' }
+  | { t: 'shards'; id: string; amount: number }
   | { t: 'draw'; count: number }
   | { t: 'shuffle' }
   | { t: 'addCard'; id: string; pile: 'discard' | 'hand' | 'draw' }
@@ -65,7 +70,6 @@ export interface BattleInit {
   enemies: string[];
   accessories: AccId[];
   items: (ItemId | null)[];
-  limit: number;
   hpScale?: number;
   uidStart: number;
 }
@@ -83,10 +87,9 @@ export class Battle {
   hand: CardInst[] = [];
   discard: CardInst[] = [];
   exhaust: CardInst[] = [];
-  energy = 0;
-  maxEnergy = STARTING_ENERGY;
+  /** Crystal Shards gathered this battle (every Break pays) */
+  shards = 0;
   turn = 0;
-  limit: number;
   items: (ItemId | null)[];
   acc: Set<AccId>;
   over: null | 'win' | 'lose' = null;
@@ -96,16 +99,14 @@ export class Battle {
   private log: Ev[] = [];
   private fresh = new Set<string>();
   private featherUsed = false;
-  private limitFrac = 0;
   private dmgScale: number;
 
   constructor(init: BattleInit) {
     this.rng = new Rng(init.seed);
     this.uid = init.uidStart;
     this.acc = new Set(init.accessories);
-    this.limit = init.limit;
     this.items = [...init.items];
-    this.heroes = init.heroes.map(h => ({ side: 'hero', id: h.id, name: HEROES[h.id].name, hp: h.hp, maxHp: h.maxHp, block: 0, st: {} }));
+    this.heroes = init.heroes.map(h => ({ side: 'hero', id: h.id, name: HEROES[h.id].name, hp: h.hp, maxHp: h.maxHp, block: 0, st: {}, acts: 0, winded: 0 }));
     this.enemies = init.enemies.map((id, i) => this.makeEnemy(ENEMIES[id], i, init.hpScale ?? 1));
     this.dmgScale = init.hpScale ?? 1;
     this.drawPile = this.rng.shuffle(init.deck.map(c => ({ ...c })));
@@ -148,7 +149,10 @@ export class Battle {
     if (this.over || this.phase !== 'player') return { ok: false, reason: 'Not your turn' };
     if (d.unplayable) return { ok: false, reason: 'Unplayable' };
     if (d.hero && this.hero(d.hero).hp <= 0) return { ok: false, reason: `${HEROES[d.hero].name} is KO'd` };
-    if (cardCost(c) > this.energy) return { ok: false, reason: 'Not enough energy' };
+    if (d.hero && cardCost(c) > 0 && this.hero(d.hero).acts < 1) {
+      const h = this.hero(d.hero);
+      return { ok: false, reason: h.winded ? `${h.name} is still recovering` : `${h.name} has already acted` };
+    }
     if (d.target === 'deadAlly' && !this.heroes.some(h => h.hp <= 0)) return { ok: false, reason: 'No KO\'d ally' };
     return { ok: true };
   }
@@ -193,11 +197,12 @@ export class Battle {
     const owner = this.hero(d.hero!);
     const target = targetId ? this.unit(targetId) : undefined;
 
-    this.energy -= cardCost(c);
+    const cost = cardCost(c);
+    if (cost > 0) { owner.acts--; owner.winded += cost - 1; }
     this.hand.splice(this.hand.indexOf(c), 1);
     this.stats.cardsPlayed++;
     this.emit({ t: 'play', card: c, owner: owner.id });
-    this.emit({ t: 'energy', value: this.energy });
+    this.emit({ t: 'actions' });
     this.cardFx(d, owner, target);
     const up = c.upgraded;
     d.play(this, { owner, target, up, card: c, D: cardVal(c, 'D'), B: cardVal(c, 'B'), H: cardVal(c, 'H'), M: cardVal(c, 'M') });
@@ -217,7 +222,7 @@ export class Battle {
       case 'potion': this.emit({ t: 'cast', from: h!.id, to: [h!.id], kind: 'heal' }); this.heal(h!.id, 20); break;
       case 'elixir': this.emit({ t: 'cast', from: h!.id, to: [h!.id], kind: 'heal' }); this.heal(h!.id, h!.maxHp); this.cleanse(h!.id); break;
       case 'phoenix': this.revive(h!.id, 0.5); break;
-      case 'ether': this.gainEnergy(2); break;
+      case 'ether': this.ready(2); break;
       case 'tonic': this.draw(3); break;
       case 'bomb': case 'wind': {
         const el: Element = id === 'bomb' ? 'fire' : 'ice';
@@ -229,16 +234,6 @@ export class Battle {
         break;
       }
     }
-    return this.flush();
-  }
-
-  useLimit(): Ev[] {
-    if (this.limit < 100 || this.over || this.phase !== 'player') return [];
-    this.limit = 0;
-    this.emit({ t: 'limit', value: 0 });
-    const heroes = this.aliveHeroes().map(h => h.id);
-    this.emit({ t: 'limitBreak', heroes });
-    for (const h of heroes) this.addCard(HEROES[h].limit, 'hand', true);
     return this.flush();
   }
 
@@ -256,8 +251,11 @@ export class Battle {
     this.phase = 'player';
     this.turn++;
     this.emit({ t: 'turn', side: 'player', turn: this.turn });
-    this.energy = this.maxEnergy + (this.turn === 1 && this.acc.has('etherStone') ? 1 : 0);
-    this.emit({ t: 'energy', value: this.energy });
+    for (const h of this.aliveHeroes()) {
+      if (h.winded > 0) { h.winded--; h.acts = 0; } else h.acts = 1;
+    }
+    if (this.turn === 1 && this.acc.has('etherStone')) this.ready(1);
+    this.emit({ t: 'actions' });
     for (const h of this.aliveHeroes()) {
       if (h.block && !h.st.rampart) { h.block = 0; this.emit({ t: 'block', id: h.id, amount: 0, block: 0 }); }
     }
@@ -366,7 +364,7 @@ export class Battle {
   }
 
   private cardFx(d: CardDef, owner: HeroF, target?: Fighter) {
-    if (d.type === 'attack' || d.type === 'limit' && d.el) {
+    if (d.type === 'attack') {
       const el = d.el ?? 'phys';
       const to = target ? [target.id] : this.aliveEnemies().map(e => e.id);
       if (el === 'phys') this.emit({ t: 'attack', from: owner.id, to: target?.id ?? null });
@@ -429,9 +427,14 @@ export class Battle {
     for (const el of e.weak) if (!e.known.includes(el)) { e.known.push(el); this.emit({ t: 'reveal', id, el }); }
   }
 
-  gainEnergy(n: number) {
-    this.energy += n;
-    this.emit({ t: 'energy', value: this.energy });
+  /** Give back n Actions: to heroes who have none left (the given hero first), else to whoever is standing. */
+  ready(n: number, prefer?: HeroId) {
+    for (let i = 0; i < n; i++) {
+      const alive = this.aliveHeroes().sort((a, b) => (a.id === prefer ? -1 : b.id === prefer ? 1 : 0));
+      const h = alive.find(x => x.acts < 1) ?? alive[0];
+      if (h) h.acts++;
+    }
+    this.emit({ t: 'actions' });
   }
 
   revive(id: string, frac: number) {
@@ -506,7 +509,6 @@ export class Battle {
     this.stats.damage += lost;
     this.stats.maxHit = Math.max(this.stats.maxHit, d);
     this.emit({ t: 'dmg', id: e.id, amount: lost, blocked, el, weakHit, hp: e.hp, block: e.block, big: weakHit || e.broken || d >= 15 });
-    this.addLimit(lost * 0.3);
     if (e.hp <= 0) return this.killEnemy(e);
     if (broke) this.breakEnemy(e);
     this.enemyDef(e).onHp?.(this, e);
@@ -517,8 +519,10 @@ export class Battle {
     e.skipped = false;
     this.stats.breaks++;
     this.emit({ t: 'break', id: e.id });
-    this.addLimit(8);
-    if (this.acc.has('breakerMark')) { this.gainEnergy(1); this.draw(1); }
+    if (this.acc.has('breakerMark')) { this.ready(1); this.draw(1); }
+    const paid = this.enemyDef(e).tier === 'normal' ? 8 : 16;
+    this.shards += paid;
+    this.emit({ t: 'shards', id: e.id, amount: paid });
   }
 
   private killEnemy(e: EnemyF) {
@@ -537,7 +541,6 @@ export class Battle {
     const lost = Math.min(h.hp, d - blocked);
     h.hp -= lost;
     this.emit({ t: 'dmg', id: h.id, amount: lost, blocked, el, weakHit: false, hp: h.hp, block: h.block, big: lost >= 12 });
-    this.addLimit(lost * 1.5);
     if (h.st.thorns && !src.dead) this.hitEnemy(null, src, h.st.thorns, 'phys');
     if (h.hp <= 0) this.heroDown(h);
   }
@@ -581,17 +584,8 @@ export class Battle {
     return alive.sort((a, b) => byHp ? a.hp - b.hp : a.hp / a.maxHp - b.hp / b.maxHp)[0];
   }
 
-  private addLimit(n: number) {
-    if (this.limit >= 100 || n <= 0) return;
-    this.limitFrac += n * (this.acc.has('limitGem') ? 1.3 : 1);
-    const whole = Math.floor(this.limitFrac);
-    if (!whole) return;
-    this.limitFrac -= whole;
-    this.limit = Math.min(100, this.limit + whole);
-    this.emit({ t: 'limit', value: this.limit });
-  }
-
-  private finish(win: boolean) {
+  /** end the battle (also used by scripted enemies, e.g. one that stops fighting) */
+  finish(win: boolean) {
     this.over = win ? 'win' : 'lose';
     this.emit({ t: 'end', win });
   }

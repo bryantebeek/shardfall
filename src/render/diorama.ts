@@ -5,7 +5,7 @@ import { getTexture, type TextureId } from '../art';
 import { beamTex, cloudTex, flameTex, foliageTex, runeTex } from './fxtex';
 import type { ParticlePool } from './particles';
 
-export type Theme = 'ruins' | 'depths' | 'boss';
+export type Theme = 'ruins' | 'depths' | 'boss' | 'dusk';
 
 export interface Palette {
   skyTop: THREE.Color; skyHorizon: THREE.Color; skyBottom: THREE.Color; sun: THREE.Color;
@@ -53,6 +53,18 @@ export const THEMES: Record<Theme, Palette> = {
     rune: C(0xff3a60), rays: C(0xff7090), raysI: 0.1,
     mote: C(0xff9ab0),
     lift: C(0x1a0618), gain: C(0xffe8e0), sat: 1.0, exposure: 1.05,
+  },
+  // dusk over a burning village: ember sky, long red light
+  dusk: {
+    skyTop: C(0x1a0c1e), skyHorizon: C(0xff6a2a), skyBottom: C(0x2a1418), sun: C(0xff8a3a),
+    fog: C(0x5a3030), fogDensity: 0.018,
+    hemiSky: C(0xd08a6a), hemiGround: C(0x2a1410), hemi: 0.85,
+    key: C(0xff9a5a), keyI: 3.2, fill: C(0x7a4aff), fillI: 0.7,
+    torch: C(0xff6a1a), torchI: 20,
+    crystalA: C(0x30f0dc), crystalB: C(0x5cc8ff), crystalI: 9,
+    rune: C(0x6ff6e0), rays: C(0xff9a60), raysI: 0.2,
+    mote: C(0xffb070),
+    lift: C(0x1a0a0a), gain: C(0xffe6d0), sat: 1.15, exposure: 1.0,
   },
 };
 
@@ -183,8 +195,6 @@ export class Diorama {
   private floaters: { o: THREE.Object3D; y: number; s: number }[] = [];
   private fogCards: { m: THREE.Mesh; v: number }[] = [];
   private pal!: Palette;
-  /** 0..1 extra darkening of ambient lights (limit break) */
-  dim = 0;
 
   constructor(scene: THREE.Scene, seed = 1337) {
     const rng = new Rng(seed);
@@ -617,28 +627,27 @@ export class Diorama {
 
   update(time: number, dt: number, pool: ParticlePool, camera: THREE.Camera, scale: number) {
     const p = this.pal;
-    const dim = 1 - this.dim * 0.75;
-    this.skyU.top.value.copy(p.skyTop).multiplyScalar(dim); this.skyU.horizon.value.copy(p.skyHorizon).multiplyScalar(dim);
-    this.skyU.bottom.value.copy(p.skyBottom).multiplyScalar(dim); this.skyU.sun.value.copy(p.sun).multiplyScalar(dim);
-    this.fog.color.copy(p.fog).multiplyScalar(dim); this.fog.density = p.fogDensity;
-    this.hemi.color.copy(p.hemiSky); this.hemi.groundColor.copy(p.hemiGround); this.hemi.intensity = p.hemi * dim;
-    this.key.color.copy(p.key); this.key.intensity = p.keyI * dim;
-    this.fill.color.copy(p.fill); this.fill.intensity = p.fillI * dim;
+    this.skyU.top.value.copy(p.skyTop); this.skyU.horizon.value.copy(p.skyHorizon);
+    this.skyU.bottom.value.copy(p.skyBottom); this.skyU.sun.value.copy(p.sun);
+    this.fog.color.copy(p.fog); this.fog.density = p.fogDensity;
+    this.hemi.color.copy(p.hemiSky); this.hemi.groundColor.copy(p.hemiGround); this.hemi.intensity = p.hemi;
+    this.key.color.copy(p.key); this.key.intensity = p.keyI;
+    this.fill.color.copy(p.fill); this.fill.intensity = p.fillI;
     this.crystalMatA.emissive.copy(p.crystalA).multiplyScalar(1.6); this.crystalMatA.color.copy(p.crystalA).lerp(new THREE.Color(1, 1, 1), 0.5);
     this.crystalMatB.emissive.copy(p.crystalB).multiplyScalar(1.6); this.crystalMatB.color.copy(p.crystalB).lerp(new THREE.Color(1, 1, 1), 0.5);
     const pulse = 0.85 + 0.15 * Math.sin(time * 1.3);
     this.crystalMatA.emissiveIntensity = this.crystalMatB.emissiveIntensity = 1.1 * pulse;
     for (const c of this.crystalLights) {
       c.light.color.copy(c.which === 'A' ? p.crystalA : p.crystalB);
-      c.light.intensity = p.crystalI * dim * (0.85 + 0.15 * Math.sin(time * 1.3 + c.seed));
+      c.light.intensity = p.crystalI * (0.85 + 0.15 * Math.sin(time * 1.3 + c.seed));
     }
     for (const r of this.rune) {
       r.rotation.z += (r.userData.spin as number) * dt;
-      (r.material as THREE.MeshBasicMaterial).color.copy(p.rune).multiplyScalar(0.85 * (0.75 + 0.25 * Math.sin(time * 2 + r.userData.spin * 40)) * dim);
+      (r.material as THREE.MeshBasicMaterial).color.copy(p.rune).multiplyScalar(0.85 * (0.75 + 0.25 * Math.sin(time * 2 + r.userData.spin * 40)));
     }
     for (const f of this.fires) {
       const n = noise(time * 7 + f.seed) * 0.6 + noise(time * 17 + f.seed * 3) * 0.4;
-      if (f.light) { f.light.color.copy(p.torch); f.light.intensity = p.torchI * dim * (0.72 + 0.4 * n); }
+      if (f.light) { f.light.color.copy(p.torch); f.light.intensity = p.torchI * (0.72 + 0.4 * n); }
       f.cards.forEach((c, i) => {
         c.quaternion.copy(camera.quaternion);
         c.scale.set(1 + 0.15 * Math.sin(time * 13 + i * 2 + f.seed), 0.85 + 0.35 * n, 1);
@@ -653,13 +662,13 @@ export class Diorama {
     }
     for (const r of this.rays) {
       const m = r.material as THREE.MeshBasicMaterial;
-      m.color.copy(p.rays).multiplyScalar(p.raysI * (r.userData.base as number) * (0.6 + 0.4 * Math.sin(time * 0.4 + (r.userData.seed as number))) * dim);
+      m.color.copy(p.rays).multiplyScalar(p.raysI * (r.userData.base as number) * (0.6 + 0.4 * Math.sin(time * 0.4 + (r.userData.seed as number))));
     }
     for (const w of this.water) w.offset.y += dt * (w.repeat.y > 5 ? 1.6 : 0.02);
     for (const f of this.floaters) { f.o.position.y = f.y + Math.sin(time * 0.4 + f.s) * 0.4; f.o.rotation.y += dt * 0.02; }
     for (const c of this.fogCards) {
       c.m.position.x += c.v * dt; if (c.m.position.x > 50) c.m.position.x = -50; if (c.m.position.x < -50) c.m.position.x = 50;
-      (c.m.material as THREE.MeshBasicMaterial).color.copy(p.fog).lerp(p.skyHorizon, 0.25).multiplyScalar(dim);
+      (c.m.material as THREE.MeshBasicMaterial).color.copy(p.fog).lerp(p.skyHorizon, 0.25);
       if (Math.abs(c.m.rotation.x) < 0.01) c.m.quaternion.copy(camera.quaternion);
     }
     this.grassU.uTime.value = time;

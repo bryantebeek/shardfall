@@ -589,7 +589,7 @@ const SFX: Record<Sfx, SfxFn> = {
     nz(e, o, t, 0.8, 1.0, 0.05, 'highpass', 7000, 0.7, 0.7);
     bell(e, o, t + 0.8, mtof(91), 1.5, 0.06, 0.6);
   },
-  limitReady: (e, o, t) => {
+  chime: (e, o, t) => {
     const v = new V(e, o, 0.4), g = v.gain(0), gg = g.gain;
     gg.setValueAtTime(0, t); gg.linearRampToValueAtTime(0.05, t + 0.55); gg.setTargetAtTime(0, t + 0.65, 0.3);
     const lp = v.filter('lowpass', 300, 3, g);
@@ -600,7 +600,7 @@ const SFX: Record<Sfx, SfxFn> = {
     bell(e, o, t + 0.6, mtof(98), 1.2, 0.05, 0.6);
     nz(e, o, t, 0.55, 0.5, 0.06, 'highpass', 6000, 0.7, 0.5);
   },
-  limit: (e, o, t) => {
+  surge: (e, o, t) => {
     const T = t + 0.9;
     const v = new V(e, o, 0.35), g = v.gain(0), gg = g.gain;
     gg.setValueAtTime(1e-4, t); gg.exponentialRampToValueAtTime(0.05, T); gg.setTargetAtTime(0, T + 0.05, 0.08);
@@ -715,7 +715,7 @@ const SFX: Record<Sfx, SfxFn> = {
 export const SFX_NAMES = Object.keys(SFX) as Sfx[];
 
 /** musical sfx stay in tune; the rest get slight random pitch */
-const TONAL = new Set<Sfx>(['select', 'holy', 'heal', 'buff', 'debuff', 'revive', 'limitReady', 'limit', 'victory', 'defeat',
+const TONAL = new Set<Sfx>(['select', 'holy', 'heal', 'buff', 'debuff', 'revive', 'chime', 'surge', 'victory', 'defeat',
   'levelUp', 'purchase', 'chest', 'map', 'enemyTurn', 'playerTurn', 'error']);
 
 /** loudness trims, balanced against music RMS from the offline selftest */

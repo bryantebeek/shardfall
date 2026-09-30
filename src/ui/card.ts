@@ -5,7 +5,7 @@ import { HEROES } from '../game/heroes';
 import type { CardInst } from '../game/types';
 import { fmtText, h, img } from './dom';
 
-const TYPE_NAMES = { attack: 'Attack', skill: 'Skill', power: 'Power', limit: 'Limit Break', status: 'Status' };
+const TYPE_NAMES = { attack: 'Attack', skill: 'Skill', power: 'Power', status: 'Status' };
 
 function vals(c: CardInst, b?: Battle, target?: EnemyF) {
   const d = cardDef(c.id);
@@ -25,6 +25,14 @@ export function cardTextHtml(c: CardInst, b?: Battle, target?: EnemyF): string {
   return `<span>${fmtText(cardText(c), vals(c, b, target))}</span>`;
 }
 
+const SWIFT_SVG = '<svg viewBox="0 0 20 16"><path d="M2 2l6 6-6 6M10 2l6 6-6 6"/></svg>';
+/** How much of the hero's time a card takes: Swift (none), one Action, or Heavy (the Action and their next turn(s)). */
+function timeBadge(cost: number): HTMLElement {
+  if (cost === 0) return h('div.card-time.swift', { 'data-tip': '<b>Swift</b><br>Doesn\'t use the hero\'s Action.', html: SWIFT_SVG });
+  const tip = cost > 1 ? `<b>Heavy</b><br>Uses the hero's Action, and they sit out their next ${cost > 2 ? `${cost - 1} turns` : 'turn'}.` : '<b>Action</b><br>Uses this hero\'s Action for the turn.';
+  return h('div.card-time' + (cost > 1 ? '.heavy' : ''), { 'data-tip': tip }, Array.from({ length: cost }, () => h('i')));
+}
+
 export function cardEl(c: CardInst, b?: Battle): HTMLElement {
   const d = cardDef(c.id);
   const owner = d.hero ? HEROES[d.hero] : null;
@@ -38,7 +46,7 @@ export function cardEl(c: CardInst, b?: Battle): HTMLElement {
       h('div.card-text', { html: cardTextHtml(c, b) }),
       h('div.card-gem'),
     ),
-    d.unplayable ? null : h('div.card-cost', h('span', cardCost(c))),
+    d.unplayable ? null : timeBadge(cardCost(c)),
   );
   return el;
 }

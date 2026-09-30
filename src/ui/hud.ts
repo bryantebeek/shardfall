@@ -11,6 +11,8 @@ export interface TopBarOpts {
   onItem?: (slot: number) => void;
   items?: (string | null)[];
   hideParty?: boolean;
+  /** in battle: the Shards held plus those gathered so far */
+  shards?: number;
 }
 
 export function topBar(run: Run, o: TopBarOpts = {}): HTMLElement {
@@ -28,7 +30,7 @@ export function topBar(run: Run, o: TopBarOpts = {}): HTMLElement {
     })),
     h('div.tb-level', { 'data-tip': `<b>Party Level ${run.level}</b><br>${run.xp} / ${xpToNext(run.level)} XP to next level` },
       h('span.tb-lv', 'Lv'), h('span.tb-lvn', run.level), h('div.tb-xp', h('div.tb-xp-fill', { style: `width:${xpPct}%` }))),
-    h('div.tb-gold', { 'data-tip': '<b>Gold</b>' }, img(uiIconUrl('gold')), h('span', run.gold)),
+    h('div.tb-gold', { 'data-tip': '<b>Crystal Shards</b><br>Earned by Breaking enemies. Spent at the market.' }, img(uiIconUrl('crystal')), h('span', o.shards ?? run.shards)),
     h('div.tb-items', items.map((id, i) => {
       const it = id ? ITEMS[id as keyof typeof ITEMS] : null;
       const slot = h('div.tb-item' + (it ? '' : '.empty'), { 'data-tip': it ? `<b>${it.name}</b><br>${it.text}${it.combatOnly && !inBattle ? '<br><i>Usable in battle.</i>' : '<br><i>Click to use.</i>'}` : 'Empty item slot' },
@@ -38,7 +40,9 @@ export function topBar(run: Run, o: TopBarOpts = {}): HTMLElement {
     })),
     h('div.tb-accs', run.acc.map(a => h('div.tb-acc', { 'data-tip': `<b>${ACCESSORIES[a].name}</b><br>${ACCESSORIES[a].text}` }, img(accessoryIconUrl(a))))),
     h('div.tb-grow'),
-    h('div.tb-floor', { 'data-tip': '<b>Spire Floor</b>' }, img(uiIconUrl('map')), h('span', row > ROWS ? 'Boss' : `${row} / ${ROWS + 1}`)),
+    run.story
+      ? h('div.tb-floor', { 'data-tip': '<b>Dawn</b><br>How many times the Hourglass has brought you back to this morning.' }, img(uiIconUrl('map')), h('span', `Dawn ${run.story.attempt} · ${String(run.hour ?? 6).padStart(2, '0')}:00`))
+      : h('div.tb-floor', { 'data-tip': '<b>Spire Floor</b>' }, img(uiIconUrl('map')), h('span', row > ROWS ? 'Boss' : `${row} / ${ROWS + 1}`)),
     btn(h('span', img(uiIconUrl('deck')), h('span', run.deck.length)), () => deckView(run.deck, 'Party Deck'), 'tb-btn'),
     btn(h('span', '⚙'), () => settings(() => { clearSave(); location.reload(); }), 'tb-btn'),
   );

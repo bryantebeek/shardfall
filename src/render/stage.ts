@@ -8,7 +8,7 @@ import { Post } from './post';
 import { GLINT, PIXEL, ParticlePool, SOFT, Shards, type V3 } from './particles';
 import { Tweens, ease, lerp } from './tween';
 import { Unit } from './units';
-import { beamTex, boltTex, glowTex, hexTex, raysTex, ringTex, slashTex } from './fxtex';
+import { beamTex, boltTex, glowTex, hexTex, ringTex, slashTex } from './fxtex';
 
 const EL_COLOR: Record<Element, number> = { phys: 0xffffff, fire: 0xff7a2a, ice: 0x8ae8ff, thunder: 0xfff3a0, holy: 0xffe6a0, dark: 0xa050ff };
 const KIND_COLOR: Record<CastKind, number> = { ...EL_COLOR, heal: 0x7dffa0, buff: 0xffcf5a, debuff: 0xb050ff, shield: 0x80d8ff };
@@ -52,7 +52,6 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches; // no camera shake or screen flashes
   const flashC = new THREE.Color(0, 0, 0);
   let bloomPulse = 0;
-  let limitK = 0, limitUnit: Unit | null = null;
 
   // theme + mode state
   let mode: StageMode = 'title';
@@ -398,13 +397,6 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
       const k = ease.inOutCubic(rigK);
       r.pos.lerpVectors(rigFrom.pos, r.pos, k); r.target.lerpVectors(rigFrom.target, r.target, k); r.fov = lerp(rigFrom.fov, r.fov, k);
     }
-    if (limitK > 0 && limitUnit) {
-      const c = limitUnit.centerNow(tmp);
-      const dirv = new THREE.Vector3().subVectors(r.pos, r.target).normalize();
-      const pos = c.clone().addScaledVector(dirv, 12.5).add(new THREE.Vector3(1.6, -0.4, 0));
-      const k = ease.inOutCubic(limitK);
-      r.pos.lerp(pos, k); r.target.lerp(c.clone().add(new THREE.Vector3(1.4, 0.2, 0)), k); r.fov = lerp(r.fov, 28, k);
-    }
     trauma = Math.max(0, trauma - rdt * 1.6);
     const sh = calm ? 0 : trauma * trauma * 0.45;
     camera.position.copy(r.pos).add(tmp.set(Math.sin(time * 41) * sh, Math.sin(time * 37 + 1) * sh, 0));
@@ -428,8 +420,8 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
     post.bloom.strength = look.bloom + bloomPulse;
     const g = post.grade.uniforms;
     g.uLift.value.copy(pal.lift); g.uGain.value.copy(pal.gain); g.uSat.value = pal.sat;
-    g.uVignette.value = look.vignette + limitK * 0.2;
-    g.uDarken.value = look.darken + limitK * 0.2;
+    g.uVignette.value = look.vignette;
+    g.uDarken.value = look.darken;
     g.uFlash.value.copy(flashC);
     g.uTime.value = time;
     renderer.toneMappingExposure = pal.exposure * look.exposure;
@@ -643,45 +635,6 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
         u.u.uGrey.value = 0.85 * (1 - k); u.u.uDim.value = lerp(0.75, 1, k);
         u.u.uGlow.value.setRGB(1, 0.85, 0.5).multiplyScalar(Math.sin(k * Math.PI));
       }, ease.inOutCubic).then(() => { u.u.uGlow.value.setRGB(0, 0, 0); });
-    },
-
-    limit(heroId) {
-      const u = U(heroId);
-      if (!u) return Promise.resolve();
-      limitUnit = u;
-      const c = centerOf(u);
-      const rays = card(raysTex(), col(0xffd890, 0.22), 8, 8, c.clone().add(new THREE.Vector3(0, 0, -0.5)));
-      const halo = card(glowTex(), col(0xffe0a0, 0.12), 4.5, 4.5, c.clone().add(new THREE.Vector3(0, 0, -0.4)));
-      real.to(0.4, (k) => { limitK = k; diorama.dim = k; }, ease.outCubic);
-      let n = 0;
-      const charge = game.to(0.85, (k) => {
-        u.u.uGlow.value.setRGB(0.25, 0.2, 0.1).multiplyScalar(k); u.rimBoost = k;
-        u.lift = ease.outCubic(k) * 0.3;
-        for (const m of [rays, halo]) { face(m); m.rotateZ(time * 0.6 * (m === rays ? 1 : -1)); }
-        rays.scale.setScalar(0.2 + k * 0.8); halo.scale.setScalar(0.3 + k);
-        (rays.material as THREE.MeshBasicMaterial).opacity = k; (halo.material as THREE.MeshBasicMaterial).opacity = k;
-        if (++n % 3 === 0) {
-          const a = Math.random() * Math.PI * 2, r = 3;
-          glow.emit({ x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r, z: c.z + 0.3 }, { count: 1, vel: [-Math.cos(a) * r * 3.5, -Math.sin(a) * r * 3.5, 0], life: [0.22, 0.27], size: [0.12, 0.04], color: 0xfff0c0, intensity: 2.5, shape: GLINT });
-        }
-      });
-      return (async () => {
-        await charge;
-        // burst
-        flash('#fff0c8');
-        trauma = Math.min(1, trauma + 0.55);
-        glow.emit(c, { count: 50, spread: 0.3, velSpread: 11, life: [0.4, 0.9], size: [0.2, 0], color: 0xffffff, color2: 0xffb040, intensity: 2.5, shape: GLINT, drag: 2.5 });
-        fxLight(c, 0xffd890, 26, 0.6);
-        real.to(0.5, (k) => { bloomPulse = 0.35 * (1 - k); });
-        game.to(0.35, (k) => {
-          face(rays); rays.scale.setScalar(1 + k * 1.2); (rays.material as THREE.MeshBasicMaterial).opacity = 1 - k;
-          face(halo); halo.scale.setScalar(1.3 + k * 2); (halo.material as THREE.MeshBasicMaterial).opacity = 1 - k;
-        }).then(() => { kill(rays); kill(halo); });
-        await game.wait(0.35);
-        u.u.uGlow.value.setRGB(0, 0, 0);
-        game.to(0.3, (k) => { u.lift = 0.3 * (1 - k); u.rimBoost = 1 - k; });
-        real.to(0.55, (k) => { limitK = 1 - k; diorama.dim = 1 - k; }, ease.inOutCubic).then(() => { limitUnit = null; });
-      })();
     },
 
     shake(intensity) { trauma = Math.min(1, trauma + intensity); },

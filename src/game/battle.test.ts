@@ -10,16 +10,43 @@ const party = [
 ];
 
 function mk(deckIds: string[], enemies: string[], extra: Partial<BattleInit> = {}) {
-  const b = new Battle({ seed: 7, heroes: party.map(h => ({ ...h })), deck: deckIds.map((id, i) => card(id, i)), enemies, accessories: [], items: [null, null, null], limit: 0, uidStart: 1000, ...extra });
+  const b = new Battle({ seed: 7, heroes: party.map(h => ({ ...h })), deck: deckIds.map((id, i) => card(id, i)), enemies, accessories: [], items: [null, null, null], uidStart: 1000, ...extra });
   b.start();
   return b;
 }
 
 describe('battle', () => {
-  it('draws 5 cards and gives 3 energy', () => {
+  it('draws 6 cards and gives every hero one Action', () => {
     const b = mk(Array(10).fill('slash'), ['slime']);
-    expect(b.hand.length).toBe(5);
-    expect(b.energy).toBe(3);
+    expect(b.hand.length).toBe(6);
+    expect(b.heroes.map(h => h.acts)).toEqual([1, 1, 1]);
+  });
+
+  it('a hero acts once per turn; Swift cards are free; Heavy cards cost the next turn too', () => {
+    const b = mk(['slash', 'slash', 'scan', 'bulwark', 'fire', 'fire', 'slash', 'slash', 'slash', 'slash'], ['ogre']);
+    const play = (id: string, t?: string) => b.play(b.hand.find(c => c.id === id)!.uid, t);
+    b.hand = [{ uid: 'a', id: 'slash', upgraded: false }, { uid: 'b', id: 'slash', upgraded: false }, { uid: 'c', id: 'scan', upgraded: false }, { uid: 'd', id: 'bulwark', upgraded: false }];
+    play('slash', 'e0');
+    expect(b.hero('knight').acts).toBe(0);
+    expect(b.canPlay(b.hand.find(c => c.id === 'slash')!).ok).toBe(false); // Aldric has acted
+    expect(b.canPlay(b.hand.find(c => c.id === 'scan')!).ok).toBe(true); // Swift: Lyra's Action untouched
+    play('scan', 'e0');
+    expect(b.hero('bmage').acts).toBe(1);
+    b.hero('knight').acts = 1;
+    play('bulwark', 'knight'); // Heavy (cost 2): Aldric sits out next turn
+    b.endTurn();
+    expect(b.hero('knight').acts).toBe(0);
+    expect(b.hero('bmage').acts).toBe(1);
+  });
+
+  it('every Break pays Crystal Shards', () => {
+    const b = mk(Array(10).fill('fire'), ['slime']); // slime: shield 3, weak fire
+    const e = b.enemies[0];
+    e.shield = 1;
+    for (const h of b.heroes) h.acts = 1;
+    b.play(b.hand[0].uid, e.id);
+    expect(e.broken).toBe(true);
+    expect(b.shards).toBe(8);
   });
 
   it('weakness hits chip shield and break the enemy, broken enemy skips then recovers', () => {
@@ -31,10 +58,12 @@ describe('battle', () => {
     expect(e.shield).toBe(1);
     expect(e.known).toContain('fire');
     const hpBefore = e.hp;
+    b.hero('bmage').acts = 1; // (one Action per turn; this test plays Lyra three times)
     const ev = b.play(b.hand[0].uid, e.id);
     expect(ev.some(x => x.t === 'break')).toBe(true);
     expect(e.broken).toBe(true);
     // broken takes +50%
+    b.hero('bmage').acts = 1;
     b.play(b.hand[0].uid, e.id);
     expect(hpBefore - e.hp).toBe(7 + 10); // 7 (breaking hit) + floor(7*1.5)
     const heroHp = b.heroes.map(h => h.hp);
@@ -64,15 +93,6 @@ describe('battle', () => {
     for (const h of b.heroes) h.hp = 1;
     for (let i = 0; i < 5 && !b.over; i++) b.endTurn();
     expect(b.over).toBe('lose');
-  });
-
-  it('limit break adds limit cards for living heroes', () => {
-    const b = mk(Array(10).fill('slash'), ['slime'], { limit: 100 });
-    b.hero('wmage').hp = 0;
-    b.useLimit();
-    expect(b.hand.map(c => c.id)).toEqual(expect.arrayContaining(['aegisrend', 'cataclysm']));
-    expect(b.hand.some(c => c.id === 'seraphim')).toBe(false);
-    expect(b.limit).toBe(0);
   });
 
   it('killing all enemies wins', () => {

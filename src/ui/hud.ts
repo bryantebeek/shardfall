@@ -1,7 +1,7 @@
 import { accessoryIconUrl, portraitUrl, uiIconUrl } from '../art';
 import { HEROES, xpToNext } from '../game/heroes';
 import { ACCESSORIES, ITEMS } from '../game/loot';
-import { ROWS, type Run } from '../game/run';
+import { ROWS, clearSave, type Run } from '../game/run';
 import { app, btn } from './app';
 import { h, img } from './dom';
 import { deckView, settings } from './screens';
@@ -38,7 +38,7 @@ export function topBar(run: Run, o: TopBarOpts = {}): HTMLElement {
     h('div.tb-grow'),
     h('div.tb-floor', { 'data-tip': '<b>Spire Floor</b>' }, img(uiIconUrl('map')), h('span', row > ROWS ? 'Boss' : `${row} / ${ROWS + 1}`)),
     btn(h('span', img(uiIconUrl('deck')), h('span', run.deck.length)), () => deckView(run.deck, 'Party Deck'), 'tb-btn'),
-    btn(h('span', '⚙'), () => settings(), 'tb-btn'),
+    btn(h('span', '⚙'), () => settings(() => { clearSave(); location.reload(); }), 'tb-btn'),
   );
 }
 

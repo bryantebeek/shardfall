@@ -10,7 +10,7 @@ export function h(sel: string, attrs?: Attrs | Child, ...children: Child[]): HTM
   const [tagPart, ...rest] = sel.split(/(?=[.#])/);
   const el = document.createElement(tagPart || 'div');
   for (const r of rest) r[0] === '.' ? el.classList.add(r.slice(1)) : (el.id = r.slice(1));
-  if (attrs && (typeof attrs !== 'object' || attrs instanceof Node || Array.isArray(attrs))) { children.unshift(attrs as Child); attrs = undefined; }
+  if (attrs !== undefined && (attrs === null || typeof attrs !== 'object' || attrs instanceof Node || Array.isArray(attrs))) { children.unshift(attrs as Child); attrs = undefined; }
   for (const [k, v] of Object.entries((attrs as Attrs) ?? {})) {
     if (v === undefined || v === null || v === false) continue;
     if (k === 'style') typeof v === 'string' ? (el.style.cssText = v) : Object.assign(el.style, v);

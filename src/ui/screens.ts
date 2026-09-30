@@ -62,6 +62,7 @@ const ROW_H = 118, MAP_W = 860;
 
 export function mapScreen(run: Run, theme: 'ruins' | 'depths' | 'boss'): Promise<number> {
   app.stage.setMode('map', theme);
+  app.stage.setUnits([]);
   app.audio.music('map');
   const avail = new Set(reachable(run));
   const visited = new Set(run.path);

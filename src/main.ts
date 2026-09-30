@@ -7,12 +7,13 @@ import '@fontsource/cormorant-garamond/600.css';
 import '@fontsource/cormorant-garamond/700.css';
 import './style.css';
 import { audio } from './audio/audio';
-import { clearSave, enterNode, load, newRun, save, theme, type Run } from './game/run';
+import { EVENTS, clearSave, enterNode, load, newCard, newRun, save, theme, type NodeType, type Run } from './game/run';
+import type { AccId, ItemId } from './game/loot';
 import { createStage } from './render/stage';
 import { app } from './ui/app';
 import { battleScreen } from './ui/battle';
 import { initTooltips } from './ui/dom';
-import { bossIntro, endScreen, eventScreen, innScreen, mapScreen, partyIntro, rewardsScreen, shopScreen, titleScreen, treasureScreen } from './ui/screens';
+import { bossIntro, endScreen, eventScreen, innScreen, levelUpScreen, mapScreen, partyIntro, rewardsScreen, shopScreen, titleScreen, treasureScreen } from './ui/screens';
 
 const frame = document.getElementById('frame')!;
 const canvas = document.getElementById('stage') as HTMLCanvasElement;
@@ -37,6 +38,8 @@ function layout() {
   app.stage.resize(fw, fh);
 }
 window.addEventListener('resize', layout);
+// Headless captures render at ~2fps; ?warp keeps stage time at real speed by stepping the simulation on a timer.
+if (new URLSearchParams(location.search).has('warp')) setInterval(() => (app.stage as unknown as { __step(dt: number): void }).__step(0.05), 50);
 layout();
 initTooltips(ui, app.toVirtual);
 
@@ -71,7 +74,33 @@ async function playRun(run: Run) {
   }
 }
 
+/** Dev shortcuts: ?dev=battle&enemies=wyrm | shop | event | inn | treasure | rewards | levelup | win | lose (&limit=100 &lv=3 &cards=a,b) */
+async function devEntry(dev: string, q: URLSearchParams) {
+  const run = newRun(Number(q.get('seed') ?? 7));
+  run.limit = Number(q.get('limit') ?? 0);
+  run.gold = Number(q.get('gold') ?? 300);
+  if (q.get('deck')) run.deck = q.get('deck')!.split(',').map(id => newCard(run, id));
+  for (const id of (q.get('cards') ?? '').split(',').filter(Boolean)) run.deck.push(newCard(run, id));
+  for (const a of (q.get('acc') ?? '').split(',').filter(Boolean)) run.acc.push(a as AccId);
+  if (q.get('items')) run.items = q.get('items')!.split(',').map(i => (i || null) as ItemId | null);
+  const node = run.map.find(n => n.row === Number(q.get('row') ?? 1))!;
+  enterNode(run, node.id);
+  switch (dev) {
+    case 'battle': await battleScreen(run, (q.get('type') as NodeType) ?? 'battle', q.get('enemies')?.split(',')); break;
+    case 'shop': await shopScreen(run); break;
+    case 'event': if (q.get('event')) run.seenEvents = EVENTS.map(e => e.id).filter(e => e !== q.get('event')); await eventScreen(run); break;
+    case 'inn': await innScreen(run); break;
+    case 'treasure': await treasureScreen(run); break;
+    case 'rewards': await rewardsScreen(run, (q.get('type') as NodeType) ?? 'elite'); break;
+    case 'levelup': await levelUpScreen(run, 2); break;
+    case 'win': case 'lose': await endScreen(run, dev === 'win'); break;
+  }
+  await playRun(run);
+}
+
 async function main() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('dev')) return devEntry(q.get('dev')!, q);
   // Tap-to-start gate so the first screen can have music.
   for (;;) {
     const saved = load();

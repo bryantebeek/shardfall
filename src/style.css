@@ -253,10 +253,10 @@ button { font: inherit; color: inherit; }
 }
 .aim-all .unit.enemy:not(.ko) .hit::after { border-color: #ff9a7a; }
 @keyframes ring-pulse { 50% { opacity: 0.4; } }
-.plate { position: absolute; top: 14px; left: 0; transform: translateX(-50%); width: 200px; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: opacity 0.4s; }
+.plate { position: absolute; top: 12px; left: 0; transform: translateX(-50%); width: 168px; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: opacity 0.4s; }
 .plate-name { font-family: var(--title); font-weight: 700; font-size: 18px; color: #fff; text-shadow: 0 2px 0 #000, 0 0 6px #000; white-space: nowrap; display: flex; gap: 8px; align-items: baseline; }
 .plate-job { font-size: 12px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
-.hp-bar { position: relative; width: 180px; height: 18px; background: #1a0808; border: 1px solid #000; border-radius: 3px; box-shadow: 0 0 0 1px rgba(232, 199, 122, 0.5), 0 3px 8px rgba(0, 0, 0, 0.6); }
+.hp-bar { position: relative; width: 150px; height: 18px; background: #1a0808; border: 1px solid #000; border-radius: 3px; box-shadow: 0 0 0 1px rgba(232, 199, 122, 0.5), 0 3px 8px rgba(0, 0, 0, 0.6); }
 .hp-fill, .hp-lag { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; }
 .hp-fill { background: linear-gradient(180deg, #86f0a8, #2ea35c 60%, #1d7a42); transition: width 0.25s ease-out, background 0.3s; }
 .enemy .hp-fill { background: linear-gradient(180deg, #ff8b7b, #d33a31 60%, #8e1d18); }
@@ -268,7 +268,7 @@ button { font: inherit; color: inherit; }
 .block-badge img { position: absolute; inset: 0; width: 36px; height: 36px; filter: drop-shadow(0 2px 2px #000); }
 .block-badge span { position: relative; font-family: var(--title); font-weight: 900; font-size: 16px; color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
 @keyframes pop-in { from { transform: scale(0.2); } }
-.statuses { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; max-width: 200px; pointer-events: auto; }
+.statuses { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; max-width: 168px; pointer-events: auto; }
 .status { position: relative; width: 30px; height: 30px; border-radius: 4px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.55); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15); animation: pop-in 0.25s; }
 .status.debuff { box-shadow: 0 0 0 1px rgba(200, 110, 255, 0.5); }
 .status img { width: 24px; height: 24px; }
@@ -321,7 +321,7 @@ button { font: inherit; color: inherit; }
 .popup.status-tag.debuff { color: #d5a0ff; }
 .popup.status-tag.buff { color: #ffe39a; }
 .popup.weak-tag { font-size: 30px; color: #ffcf4d; margin-top: -54px; letter-spacing: 0.1em; }
-.popup.break-tag { font-size: 110px; letter-spacing: 0.06em; margin-top: -20px; background: linear-gradient(180deg, #ffffff, #bfe8ff 40%, #4dbbff 60%, #fff); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 3px #062846; filter: drop-shadow(0 0 20px #7fd8ff) drop-shadow(0 6px 0 #000); animation: break-pop 1.4s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+.popup.break-tag { text-shadow: none; font-size: 110px; letter-spacing: 0.06em; margin-top: -20px; background: linear-gradient(180deg, #ffffff, #bfe8ff 40%, #4dbbff 60%, #fff); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 3px #062846; filter: drop-shadow(0 0 20px #7fd8ff) drop-shadow(0 6px 0 #000); animation: break-pop 1.4s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
 @keyframes pop-rise {
   0% { opacity: 0; transform: translate(-50%, -20%) scale(0.4); }
   15% { opacity: 1; transform: translate(-50%, -80%) scale(1.15); }
@@ -354,7 +354,7 @@ button { font: inherit; color: inherit; }
 .energy.empty::before { filter: grayscale(0.8) brightness(0.5); box-shadow: 0 0 0 3px #0a1a33, 0 0 0 5px #52606e; }
 .energy.empty .energy-ring { opacity: 0.2; }
 
-.limit { position: absolute; z-index: 35; left: 36px; top: 736px; width: 330px; display: flex; align-items: center; gap: 8px; }
+.limit { position: absolute; z-index: 35; left: 36px; top: 92px; width: 360px; display: flex; align-items: center; gap: 8px; }
 .limit-label { font-family: var(--title); font-weight: 900; font-size: 18px; letter-spacing: 0.12em; color: #ffcf7a; text-shadow: 0 2px 0 #000; }
 .limit-bar { position: relative; flex: 1; height: 16px; border-radius: 8px; background: rgba(0, 0, 0, 0.7); overflow: hidden; box-shadow: 0 0 0 1px #000, 0 0 0 2px rgba(232, 199, 122, 0.6); }
 .limit-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #b3401a, #ff9a3d, #ffe07a); transition: width 0.4s ease; }
@@ -362,7 +362,7 @@ button { font: inherit; color: inherit; }
 @keyframes shine { from { background-position: 150% 0; } to { background-position: -150% 0; } }
 .limit-num { font-family: var(--title); font-weight: 700; font-size: 16px; min-width: 44px; color: var(--text); text-shadow: 0 2px 0 #000; }
 .limit.full .limit-fill { background: linear-gradient(90deg, #ff5a3d, #ffcf3d, #4dd6ff, #c86bff, #ff5a3d); background-size: 200% 100%; animation: prism-slide 1.5s linear infinite; }
-.limit-btn { position: absolute; left: 0; top: -58px; padding: 8px 22px; font-size: 22px; display: none; border-color: #ffd98a; color: #fff; animation: limit-btn 1s ease-in-out infinite; }
+.limit-btn { position: absolute; left: 60px; top: 30px; padding: 8px 22px; font-size: 22px; display: none; border-color: #ffd98a; color: #fff; animation: limit-btn 1s ease-in-out infinite; }
 .limit.full .limit-btn { display: block; }
 @keyframes limit-btn { 50% { box-shadow: 0 0 26px #ffb84d, inset 0 0 12px rgba(255, 200, 100, 0.5); } }
 
@@ -472,8 +472,8 @@ button { font: inherit; color: inherit; }
 .levelup-heroes { display: flex; gap: 50px; margin-top: 24px; }
 .levelup-hero { display: flex; flex-direction: column; align-items: center; font-family: var(--title); font-size: 22px; }
 .levelup-hero img { width: 84px; height: 84px; border-radius: 50%; background: #1a1a2c; box-shadow: 0 0 0 2px var(--gold); }
-.levelup-hero b { color: var(--hp); }
-.levelup-prompt { margin-top: 20px; font-size: 30px; font-style: italic; color: var(--gold-hi); }
+.levelup-hero b { color: var(--hp); text-shadow: 0 2px 0 #000, 0 0 8px #000; }
+.levelup-prompt { margin: 20px 0 30px; font-size: 30px; font-style: italic; color: var(--gold-hi); }
 
 .card-choice { display: flex; flex-direction: column; align-items: center; }
 

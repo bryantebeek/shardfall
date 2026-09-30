@@ -19,8 +19,8 @@ const EL_SFX: Record<Element, Sfx> = { phys: 'slash', fire: 'fire', ice: 'ice', 
 
 type Aim = { kind: 'card'; uid: string; sticky: boolean } | { kind: 'item'; slot: number };
 
-export async function battleScreen(run: Run, type: NodeType): Promise<boolean> {
-  const enc = encounter(run, type);
+export async function battleScreen(run: Run, type: NodeType, enemies?: string[]): Promise<boolean> {
+  const enc = enemies ? { enemies, hpScale: 1 } : encounter(run, type);
   const b = new Battle(battleInit(run, enc));
   const { stage, audio } = app;
   stage.setMode('battle', type === 'boss' ? 'boss' : theme(run));
@@ -97,7 +97,7 @@ export async function battleScreen(run: Run, type: NodeType): Promise<boolean> {
     const statuses = h('div.statuses');
     const hit = h('div.hit', { 'data-unit': u.id });
     const plate = h('div.plate',
-      h('div.plate-name', isEnemy ? u.name : `${u.name}`, !isEnemy ? h('span.plate-job', HEROES[u.id as HeroId].job) : null),
+      h('div.plate-name', u.name),
       h('div.hp-bar', lag, hp, hpText, block),
       statuses);
     const uh: UnitHud = { el: h('div.unit.' + u.side, { 'data-id': u.id }, hit, plate), hit, hp, lag, hpText, block, statuses, shown: { hp: u.hp, block: u.block } };
@@ -215,8 +215,8 @@ export async function battleScreen(run: Run, type: NodeType): Promise<boolean> {
       const el = cardEl(c, b);
       el.style.transform = `translate(${160 - CARD_W / 2}px, ${1040 - CARD_H / 2}px) scale(0.3) rotate(-30deg)`;
       el.style.opacity = '0';
-      el.addEventListener('pointerenter', () => { if (!aim) { hoverCard = c.uid; layout(); audio.sfx('hover'); } });
-      el.addEventListener('pointerleave', () => { if (hoverCard === c.uid) { hoverCard = null; layout(); } });
+      el.addEventListener('pointerenter', () => { if (!aim) { hoverCard = c.uid; layout(); audio.sfx('hover'); if (!busy) stage.setActive(cardDef(c.id).hero); } });
+      el.addEventListener('pointerleave', () => { if (hoverCard === c.uid) { hoverCard = null; layout(); if (!busy) stage.setActive(null); } });
       el.addEventListener('pointerdown', ev => onCardDown(ev, c));
       hand.append(el);
       cardEls.set(c.uid, el);
@@ -521,6 +521,7 @@ export async function battleScreen(run: Run, type: NodeType): Promise<boolean> {
   async function step(ev: Ev): Promise<void> {
     switch (ev.t) {
       case 'turn':
+        stage.setActive(null);
         if (ev.side === 'enemy') { audio.sfx('enemyTurn'); await banner('Enemy Turn', 'enemy', 650); }
         else if (ev.turn > 1) { audio.sfx('playerTurn'); await banner(`Turn ${ev.turn}`, 'player', 550); }
         return;

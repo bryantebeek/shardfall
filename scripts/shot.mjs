@@ -3,7 +3,7 @@
 import { chromium } from 'playwright-core';
 const [url = 'http://localhost:5310/', out = '/tmp/shot', stepsArg] = process.argv.slice(2);
 const steps = stepsArg ? JSON.parse(stepsArg) : [];
-const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
+const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', args: ['--use-angle=gl-egl', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
 const logs = [];
 page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') logs.push(`[${m.type()}] ${m.text()}`); });

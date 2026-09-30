@@ -20,11 +20,12 @@ const LOOK: Record<StageMode, ModeLook> = {
   map: { focus: 0.5, band: 0, falloff: 0.2, blur: 4.5, min: 1, darken: 0.45, vignette: 0.6, bloom: 0.5, rays: 1.2, exposure: 0.9 },
 };
 
+const RENDER_H = 720;
+
 type Rig = { pos: THREE.Vector3; target: THREE.Vector3; fov: number };
 
 export function createStage(canvas: HTMLCanvasElement): Stage {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -353,9 +354,12 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   }
 
   // ------------------------------------------------------------------ loop
-  let last = performance.now();
+  let last = performance.now(), next = 0;
   function frame(now: number) {
     requestAnimationFrame(frame);
+    // fps cap: 60 in battle, 30 for the slow-drifting title/map cameras
+    if (now < next - 1) return;
+    next = Math.max(next + 1000 / (mode === 'battle' ? 60 : 30), now);
     const rdt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
     step(rdt);
@@ -433,7 +437,8 @@ export function createStage(canvas: HTMLCanvasElement): Stage {
   // ------------------------------------------------------------------ Stage API
   const stage: Stage = {
     resize(w, h) {
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      // fixed render budget: at most RENDER_H device pixels tall, CSS upscales the rest (DOM UI stays sharp)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, RENDER_H / h));
       renderer.setSize(w, h);
       camera.aspect = w / h; camera.updateProjectionMatrix();
       post.setSize(w, h);

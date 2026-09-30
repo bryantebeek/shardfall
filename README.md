@@ -19,6 +19,8 @@ npm run sim        # balance simulator (greedy bot plays full acts)
 ```
 
 Controls: drag a card onto a target (or click a card, then click the target). Number keys select cards, `E` ends the turn, `Esc`/right-click cancels.
+Touch: drag, or tap a card then tap the target. Controller: D-pad/stick to move, `A` select, `B` back, `X` deck, `Y` end turn, `Start` settings.
+Battle speed (1×/1.5×/2×) is in Settings.
 
 ## Layout
 

@@ -13,6 +13,7 @@ import { createStage } from './render/stage';
 import { app } from './ui/app';
 import { battleScreen } from './ui/battle';
 import { initTooltips } from './ui/dom';
+import { initGamepad } from './ui/gamepad';
 import { bossIntro, endScreen, eventScreen, innScreen, levelUpScreen, mapScreen, partyIntro, rewardsScreen, shopScreen, titleScreen, treasureScreen } from './ui/screens';
 
 const frame = document.getElementById('frame')!;
@@ -44,6 +45,7 @@ window.addEventListener('resize', layout);
 if (new URLSearchParams(location.search).has('warp')) setInterval(() => (app.stage as unknown as { __step(dt: number): void }).__step(0.05), 50);
 layout();
 initTooltips(ui, app.toVirtual);
+initGamepad();
 
 // Audio needs a user gesture.
 const unlock = () => { audio.unlock(); window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); };

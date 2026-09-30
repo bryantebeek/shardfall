@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shardfall — Story Flow</title>
+<style>
+  @font-face { font-family: 'Cinzel'; font-weight: 700; src: url('node_modules/@fontsource/cinzel/files/cinzel-latin-700-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Cinzel'; font-weight: 400; src: url('node_modules/@fontsource/cinzel/files/cinzel-latin-400-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Cinzel Decorative'; font-weight: 700; src: url('node_modules/@fontsource/cinzel-decorative/files/cinzel-decorative-latin-700-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Cormorant'; font-weight: 600; src: url('node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2') format('woff2'); }
+  :root { --gold: #e8c77a; --ink: #06070f; --text: #f3e9d2; --muted: #9a93a8; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--ink); color: var(--text); overflow: hidden; font-family: 'Cormorant', Georgia, serif; }
+  #sky { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, transparent 40%, rgba(0,0,0,0.75)); }
+  header { position: fixed; left: 0; right: 0; top: 18px; text-align: center; pointer-events: none; }
+  header h1 { margin: 0; font-family: 'Cinzel Decorative', Georgia, serif; font-size: clamp(26px, 3.2vw, 46px); letter-spacing: 0.08em;
+    background: linear-gradient(180deg, #fff 10%, #bfe9ff 45%, #b28bff 90%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 18px rgba(120,200,255,0.45)); }
+  header p { margin: 2px 0 0; font-style: italic; color: var(--muted); font-size: clamp(14px, 1.2vw, 19px); }
+  svg#flow { position: fixed; left: 0; right: 0; top: 108px; bottom: 0; width: 100%; height: calc(100% - 108px); }
+  .col-guide { stroke: rgba(232,199,122,0.07); stroke-width: 1; }
+  .col-guide.past { stroke: rgba(255,120,80,0.1); }
+  .badge circle { fill: #0e1020; stroke: var(--gold); stroke-width: 1.5; }
+  .badge text { fill: #fff6dc; font-family: 'Cinzel', serif; font-weight: 700; font-size: 17px; text-anchor: middle; dominant-baseline: central; }
+  .badge.past circle { stroke: #ff9a6a; fill: #1a0c0a; }
+  .ctitle { fill: var(--text); font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.03em; text-anchor: middle; }
+  .band { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.28em; text-anchor: middle; text-transform: uppercase; }
+  .thread { fill: none; stroke-linecap: round; }
+  .dim { opacity: 0.1 !important; transition: opacity 0.25s; }
+  .glyph text { font-family: 'Cinzel', serif; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+  .twist circle { fill: #fff3c4; }
+  .twist text.n { fill: #1a1000; font-family: 'Cinzel', serif; font-weight: 700; font-size: 12px; text-anchor: middle; dominant-baseline: central; }
+  .lbl { font-style: italic; font-size: 16px; paint-order: stroke; stroke: rgba(6,7,15,0.92); stroke-width: 4px; }
+  .end-mark { font-family: 'Cinzel', serif; font-size: 16px; text-anchor: middle; dominant-baseline: central; }
+  .hit { fill: transparent; }
+  .legend g { cursor: pointer; }
+  .legend text { fill: var(--text); font-family: 'Cinzel', serif; font-size: 13px; dominant-baseline: central; }
+  .fade-in { opacity: 0; transition: opacity 0.6s ease; }
+  .fade-in.on { opacity: 1; }
+  #card { position: fixed; pointer-events: none; min-width: 260px; max-width: 340px; padding: 14px 18px 12px; border-radius: 6px; opacity: 0; transition: opacity 0.15s;
+    background: linear-gradient(180deg, rgba(24,26,48,0.97), rgba(9,10,22,0.97)); border: 1px solid #8f7443; box-shadow: 0 12px 40px rgba(0,0,0,0.7); }
+  #card.show { opacity: 1; }
+  #card .k { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; }
+  #card .t { font-family: 'Cinzel', serif; font-weight: 700; font-size: 19px; color: #fff6dc; margin: 2px 0 8px; }
+  #card .g { font-size: 17px; line-height: 1.3; }
+  #card .w { font-size: 17px; line-height: 1.3; font-style: italic; color: #fff3c4; margin-top: 6px; }
+  #replay { position: fixed; right: 22px; top: 22px; z-index: 3; cursor: pointer; font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.15em; color: #fff6dc;
+    background: rgba(14,16,32,0.8); border: 1px solid #8f7443; border-radius: 4px; padding: 8px 16px; }
+  #replay:hover { background: rgba(40,36,60,0.9); }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<div class="vignette"></div>
+<header><h1>Shardfall</h1><p>every fall remembers a future already lived</p></header>
+<button id="replay">↻ Replay</button>
+<svg id="flow" viewBox="0 0 1800 930" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <!-- user-space filter regions: bounding-box regions are empty for perfectly horizontal lines -->
+    <filter id="glow" filterUnits="userSpaceOnUse" x="-100" y="-100" width="2000" height="1130"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="bigglow" filterUnits="userSpaceOnUse" x="-100" y="-100" width="2000" height="1130"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <g id="guides"></g><g id="arcs"></g><g id="threads"></g><g id="marks"></g><g id="header-row"></g><g id="legend" class="legend"></g><g id="hits"></g>
+</svg>
+<div id="card"><div class="k"></div><div class="t"></div><div class="g"></div><div class="w"></div></div>
+
+<script>
+// ───────────────────────── data (mirrors STORY.md) ─────────────────────────
+const COLS = [
+  { n: 'P', t: ['The Night the', 'Light Broke'], band: 'past', goal: 'A boy is carried out of the burning capital.', twist: 'Who was the knight?' },
+  { n: '1', t: ['Emberfall'], band: 'now', goal: 'Escape the raid with Seren.', twist: 'The enemy rewinds too.' },
+  { n: '2', t: ['The Road', 'of Lanterns'], band: 'now', goal: 'Bring the Hourglass to Archbishop Maelis.', twist: 'Maelis already knows what it does.' },
+  { n: '3', t: ['The Mirror', 'Lake'], band: 'now', goal: 'Take the shard beneath the lake.', twist: 'The Warden is Princess Elowen.' },
+  { n: '4', t: ['The Iron', 'March'], band: 'now', goal: 'Infiltrate the Emperor\'s fortress.', twist: 'The Ashen Knight is Aldric. Caius dies.' },
+  { n: '5', t: ['The Veiled', 'Academy'], band: 'now', goal: 'Open the Order\'s archive.', twist: 'Lyra is the Keystone. Some Memories lie.' },
+  { n: '6', t: ['Four Hundred', 'and Twelve'], band: 'now', goal: 'Mend the cracking Hourglass.', twist: 'Seren has lived 412 loops. The lies were hers.' },
+  { n: '7', t: ['The Ashen', 'Road'], band: 'now', goal: 'Take back the Hourglass\'s other half.', twist: 'The knight in the rubble was Caius.' },
+  { n: '8', t: ['The Voice', 'in the Light'], band: 'now', goal: 'Stop the Reforging.', twist: 'The Lumen always had a child inside.' },
+  { n: '9', t: ['The Hollow', 'of Dawn'], band: 'now', goal: 'End it.', twist: 'Maelis becomes the Wyrm. Reforge, or release.' },
+  { n: 'F', t: ['Held', 'Light'], band: 'now', goal: 'Release the Lumen.', twist: 'Seren spends the last moment on one heartbeat.' },
+  { n: 'E', t: ['The First', 'Winter'], band: 'later', goal: 'One year later.', twist: '"It\'s just one."' },
+];
+const X0 = 130, DX = 140, X = i => X0 + i * DX;
+const LAST = COLS.length - 1;
+
+const C = { aldric: '#6fa8ff', lyra: '#c58bff', seren: '#ffd97a', ashen: '#a9aebb', maelis: '#f2ead6', wyrm: '#ff4f8b', caius: '#ff7a5a', ilse: '#ffe9b0', elowen: '#9fe8ff' };
+// style: solid | thin (off-stage / childhood) | dashed (unseen, shadowing)
+const THREADS = [
+  { id: 'ilse', name: 'Ilse', color: C.ilse, segs: [
+    { pts: [[-0.45, 300], [0, 300]], style: 'solid', end: 'shard' },
+  ] },
+  { id: 'caius', name: 'Caius', color: C.caius, segs: [
+    { pts: [[-0.45, 360], [0, 360]], style: 'solid' },
+    { pts: [[0, 360], [1, 372], [2, 372], [3, 372], [3.5, 372]], style: 'thin' },
+    { pts: [[3.5, 372], [4, 372]], style: 'solid', end: 'x' },
+  ] },
+  { id: 'ashen', name: 'Ashen Knight', color: C.ashen, segs: [
+    { pts: [[0.7, 318], [1, 318]], style: 'solid' },
+    { pts: [[1, 318], [2, 318], [3, 318]], style: 'dashed' },
+    { pts: [[3, 318], [4, 425], [5, 330]], style: 'solid' },
+    { pts: [[5, 330], [6, 330]], style: 'dashed' },
+    { pts: [[6, 330], [7, 440], [8, 440], [9, 445]], style: 'solid', end: 'x' },
+  ] },
+  { id: 'elowen', name: 'Elowen', color: C.elowen, segs: [
+    { pts: [[2.5, 395], [3, 408]], style: 'solid', end: 'shard' },
+  ] },
+  { id: 'aldric', name: 'Aldric', color: C.aldric, segs: [
+    { pts: [[0, 480], [1, 480]], style: 'thin' },
+    { pts: [[1, 480], [2, 480], [3, 470], [4, 448], [5, 482], [6, 486], [7, 468], [8, 470], [9, 474], [10, 480], [11, 480]], style: 'solid', w: 4 },
+  ] },
+  { id: 'seren', name: 'Seren', color: C.seren, segs: [
+    { pts: [[0.7, 520], [1, 520]], style: 'solid', w: 4 },
+    { pts: [[1, 520], [2, 520], [3, 522], [4, 526], [5, 520], [6, 514], [7, 520], [8, 520], [9, 520], [10, 522], [11, 520]], style: 'solid', w: 4 },
+  ] },
+  { id: 'lyra', name: 'Lyra', color: C.lyra, segs: [
+    { pts: [[0, 560], [1, 560]], style: 'thin' },
+    { pts: [[1, 560], [2, 560], [3, 565], [4, 574], [5, 592], [6, 562], [7, 560], [8, 562], [9, 560], [10, 566], [11, 560]], style: 'solid', w: 4 },
+  ] },
+  { id: 'maelis', name: 'Maelis', color: C.maelis, segs: [
+    { pts: [[-0.45, 640], [0, 640]], style: 'solid' },
+    { pts: [[0, 640], [1, 640], [2, 640]], style: 'thin' },
+    { pts: [[2, 640], [3, 640], [4, 640], [5, 632], [6, 632], [7, 632], [8, 640]], style: 'solid' },
+    { pts: [[8, 640], [9, 300]], style: 'solid', color: C.wyrm, w: 4, end: 'burst' },
+  ] },
+];
+
+// numbered twists: [col, y, label, side]
+const TWISTS = [
+  [1, 318, 'It rewinds too', 'up'],
+  [3, 408, 'Wardens are people', 'down'],
+  [4, 437, 'The Knight is Aldric', 'up'],
+  [5, 592, 'Lyra is the key', 'down'],
+  [5, 330, 'Some memories lie', 'up'],
+  [6, 514, '412 loops · the lies were hers', 'down'],
+  [7, 404, 'The knight in the rubble was Caius', 'up'],
+  [8, 640, 'The light always had a child inside', 'down'],
+  [9, 300, 'Maelis becomes the Wyrm', 'up'],
+  [10, 566, 'One heartbeat', 'down'],
+];
+
+// five Fragments of the Prologue's night: [col, whose eyes]
+const FRAGMENTS = [[2, 'the priest'], [4, 'the brother'], [5, 'the girl in the street'], [7, 'the girl in the light'], [8, 'the boy']];
+
+const GLYPHS = [
+  { kind: 'none' }, { kind: 'loop', mem: 3, anchor: true }, { kind: 'loop', mem: 3, anchor: true }, { kind: 'loop', mem: 3, anchor: true },
+  { kind: 'loop', mem: 3, anchor: true, rival: true }, { kind: 'loop', mem: 3, anchor: true, cracked: true }, { kind: 'loop', label: '412', anchor: true },
+  { kind: 'loop', mem: 2, anchor: true }, { kind: 'loop', mem: 2, anchor: true }, { kind: 'fork' }, { kind: 'hourglass' }, { kind: 'none' },
+];
+
+// ───────────────────────── helpers ─────────────────────────
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (parent) parent.append(e); return e; };
+const $ = id => document.getElementById(id);
+const SPEED = 340;
+const T = x => Math.max(0, (x - X0 + 80) / SPEED);
+const timers = [];
+const later = (s, f) => timers.push(setTimeout(f, s * 1000));
+const reveal = (node, x, extra = 0.2) => { node.classList.add('fade-in'); later(T(x) + extra, () => node.classList.add('on')); };
+const text = (parent, attrs, str) => { const t = el('text', attrs, parent); t.textContent = str; return t; };
+
+function pathD(pts) {
+  let d = `M${X(pts[0][0])},${pts[0][1]}`;
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, ay] = [X(pts[i - 1][0]), pts[i - 1][1]], [bx, by] = [X(pts[i][0]), pts[i][1]], h = (bx - ax) / 2;
+    d += ` C${ax + h},${ay} ${bx - h},${by} ${bx},${by}`;
+  }
+  return d;
+}
+function drawOn(p, xa, xb) {
+  const len = p.getTotalLength();
+  p.style.strokeDasharray = len; p.style.strokeDashoffset = len;
+  p.getBoundingClientRect();
+  p.style.transition = `stroke-dashoffset ${Math.max(0.2, T(xb) - T(xa))}s linear ${T(xa)}s`;
+  later(0.05, () => p.style.strokeDashoffset = 0);
+}
+function fadeTo(node, opacity, delay, dur = 0.8) {
+  node.style.opacity = 0; node.style.transition = `opacity ${dur}s ease ${delay}s`;
+  later(0.05, () => node.style.opacity = opacity);
+}
+
+// ───────────────────────── build ─────────────────────────
+function build() {
+  timers.splice(0).forEach(clearTimeout);
+  for (const id of ['guides', 'arcs', 'threads', 'marks', 'header-row', 'legend', 'hits']) $(id).replaceChildren();
+
+  // columns + header
+  COLS.forEach((c, i) => {
+    const x = X(i), past = c.band === 'past';
+    el('line', { x1: x, y1: 150, x2: x, y2: 700, class: 'col-guide' + (past ? ' past' : '') }, $('guides'));
+    const b = el('g', { class: 'badge' + (past ? ' past' : '') }, $('header-row'));
+    el('circle', { cx: x, cy: 40, r: 17 }, b);
+    text(b, { x, y: 41 }, c.n);
+    const t = el('text', { class: 'ctitle', x, y: 78 }, $('header-row'));
+    c.t.forEach((line, k) => { const s = el('tspan', { x, dy: k ? 17 : 0 }, t); s.textContent = line; });
+  });
+  const band = (x1, x2, label, color) => {
+    const g = el('g', {}, $('header-row'));
+    el('line', { x1: x1 - 52, x2: x2 + 52, y1: 128, y2: 128, stroke: color, 'stroke-opacity': 0.35 }, g);
+    text(g, { class: 'band', x: (x1 + x2) / 2, y: 143, fill: color }, label);
+  };
+  band(X(0), X(0), '20 years ago', '#ff9a6a');
+  band(X(1), X(10), 'the present · loop 412 · each chapter may be lived many times', '#e8c77a');
+  band(X(11), X(11), 'a year later', '#9fe8ff');
+
+  // threads
+  for (const th of THREADS) {
+    const g = el('g', { 'data-id': th.id }, $('threads'));
+    for (const s of th.segs) {
+      const color = s.color ?? th.color;
+      const w = s.w ?? (s.style === 'thin' ? 1.4 : 3);
+      const p = el('path', { d: pathD(s.pts), class: 'thread', stroke: color, 'stroke-width': w, filter: 'url(#glow)' }, g);
+      const xa = X(s.pts[0][0]), xb = X(s.pts.at(-1)[0]);
+      if (s.style === 'dashed') { p.setAttribute('stroke-dasharray', '8 10'); fadeTo(p, 0.55, T(xa)); }
+      else { if (s.style === 'thin') p.style.opacity = 0.45; drawOn(p, xa, xb); }
+      const [ec, ey] = s.pts.at(-1), ex = X(ec);
+      if (s.end === 'x') reveal(text(g, { class: 'end-mark', x: ex + 12, y: ey, fill: color }, '✕'), ex);
+      if (s.end === 'shard') reveal(text(g, { class: 'end-mark', x: ex + 12, y: ey, fill: color, filter: 'url(#glow)' }, '✦'), ex);
+      if (s.end === 'burst') {
+        const m = el('g', { filter: 'url(#bigglow)' }, g);
+        for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; el('line', { x1: ex + Math.cos(a) * 8, y1: ey + Math.sin(a) * 8, x2: ex + Math.cos(a) * 26, y2: ey + Math.sin(a) * 26, stroke: color, 'stroke-width': 2 }, m); }
+        reveal(m, ex);
+      }
+    }
+  }
+
+  // survivors arrive in the epilogue
+  for (const [y, color] of [[480, C.aldric], [520, C.seren], [560, C.lyra]]) reveal(el('circle', { cx: X(LAST), cy: y, r: 6, fill: color, filter: 'url(#glow)' }, $('marks')), X(LAST));
+
+  // the stranger in the rubble: unknown until the Fragments are complete
+  const q = el('g', {}, $('marks'));
+  const qc = el('circle', { cx: X(0), cy: 420, r: 15, fill: '#0e1020', stroke: '#a9aebb', 'stroke-width': 2, 'stroke-dasharray': '3 4' }, q);
+  const qt = text(q, { class: 'end-mark', x: X(0), y: 421, fill: '#cfd4de' }, '?');
+  el('path', { d: `M${X(0)},435 C${X(0)},452 ${X(0) + 8},462 ${X(0) + 2},474`, stroke: '#a9aebb', 'stroke-width': 1.5, fill: 'none', 'stroke-dasharray': '2 4' }, q);
+  reveal(q, X(0));
+
+  // Fragments: each chapter replays the Prologue's night; gold filaments back to column P
+  FRAGMENTS.forEach(([c, who], i) => {
+    const x = X(c), y = 255, g = el('g', {}, $('arcs'));
+    const p = el('path', { d: `M${x},${y} C${x - 60},${y - 70 - i * 6} ${X(0) + 80},${y - 90 - i * 6} ${X(0) + 6},${404}`, fill: 'none', stroke: '#ffd97a', 'stroke-width': 1.2, 'stroke-dasharray': '2 5', filter: 'url(#glow)' }, g);
+    fadeTo(p, 0.55, T(x) + 0.3, 1.2);
+    const d = el('path', { d: `M${x},${y - 9} l7,9 l-7,9 l-7,-9 z`, fill: '#0e1020', stroke: '#ffd97a', 'stroke-width': 1.6, filter: 'url(#glow)' }, g);
+    reveal(d, x, 0.3);
+    reveal(text(g, { class: 'lbl', x, y: y + 26, fill: '#e8d9a8', 'text-anchor': 'middle', 'font-size': 14 }, who), x, 0.3);
+  });
+  const fk = text($('marks'), { class: 'lbl', x: X(0) + 250, y: 170, fill: '#e8d9a8', 'font-size': 15 }, '◇ five fragments of the same night');
+  reveal(fk, X(2), 0.6);
+
+  // twists
+  TWISTS.forEach(([c, y, label, side], i) => {
+    const x = X(c), g = el('g', { class: 'twist' }, $('marks'));
+    el('circle', { cx: x, cy: y, r: 11, filter: 'url(#glow)' }, g);
+    text(g, { class: 'n', x, y: y + 0.5 }, i + 1);
+    text(g, { class: 'lbl', x, y: side === 'up' ? y - 20 : y + 28, 'text-anchor': 'middle', fill: '#fff3c4' }, label);
+    reveal(g, x);
+  });
+
+  // rewinds / memories / anchors
+  GLYPHS.forEach((gl, i) => {
+    const x = X(i), y = 690, g = el('g', { class: 'glyph' }, $('marks'));
+    if (gl.kind === 'loop') {
+      el('path', { d: `M${x + 13},${y - 8} A15,15 0 1 1 ${x - 5},${y - 14}`, fill: 'none', stroke: gl.cracked ? '#d8b0ff' : '#bfe9ff', 'stroke-width': 2.2, 'stroke-dasharray': gl.cracked ? '5 3' : '', filter: 'url(#glow)' }, g);
+      el('path', { d: `M${x - 9},${y - 20} L${x - 3},${y - 14} L${x - 11},${y - 10}`, fill: 'none', stroke: '#bfe9ff', 'stroke-width': 2 }, g);
+      if (gl.label) text(g, { x, y: y + 1, fill: '#fff3c4', 'font-size': 12 }, gl.label);
+      for (let k = 0; k < (gl.mem ?? 0); k++) el('circle', { cx: x - 8 + k * 8, cy: y + 26, r: 2.6, fill: '#c8b8ff' }, g);
+      if (gl.anchor) el('path', { d: `M${x + 24},${y + 1} l6,-7 l6,7 l-6,7 z`, fill: '#e8c77a' }, g);
+      if (gl.rival) el('circle', { cx: x - 26, cy: y, r: 4, fill: '#a9aebb' }, g);
+    } else if (gl.kind === 'fork') {
+      el('path', { d: `M${x - 18},${y} L${x},${y} M${x},${y} L${x + 16},${y - 12} M${x},${y} L${x + 16},${y + 12}`, stroke: '#e8c77a', 'stroke-width': 2.2, fill: 'none' }, g);
+      el('circle', { cx: x + 19, cy: y - 14, r: 4, fill: '#ffd97a' }, g);
+      el('circle', { cx: x + 19, cy: y + 14, r: 4, fill: '#ff5a4a' }, g);
+    } else if (gl.kind === 'hourglass') {
+      el('path', { d: `M${x - 11},${y - 16} h22 l-9,14 l9,14 h-22 l9,-14 z`, fill: 'none', stroke: '#e8c77a', 'stroke-width': 2, 'stroke-dasharray': '4 3' }, g);
+      el('circle', { cx: x, cy: y - 2, r: 2.6, fill: '#fff3c4', filter: 'url(#bigglow)' }, g);
+    }
+    reveal(g, x);
+  });
+  const key = el('g', { class: 'fade-in' }, $('marks'));
+  text(key, { x: X(0) - 64, y: 694, fill: '#9a93a8', 'font-size': 14, 'font-style': 'italic' }, 'rewinds · memories ·');
+  el('path', { d: `M${X(0) + 66},694 l5,-6 l5,6 l-5,6 z`, fill: '#e8c77a' }, key);
+  text(key, { x: X(0) + 80, y: 694, fill: '#9a93a8', 'font-size': 14, 'font-style': 'italic' }, 'anchor');
+  later(0.3, () => key.classList.add('on'));
+
+  // endings
+  const tEnd = T(X(LAST)) + 0.4;
+  const y0 = 725;
+  const red = el('path', { d: `M${X(9)},${y0} C${X(9)},${y0 + 140} ${X(1)},${y0 + 140} ${X(1)},${y0}`, fill: 'none', stroke: '#ff6a5a', 'stroke-width': 2.5, 'stroke-dasharray': '6 7', filter: 'url(#glow)' }, $('arcs'));
+  fadeTo(red, 1, tEnd, 1.4);
+  const rh = el('path', { d: `M${X(1) - 7},${y0 + 12} L${X(1)},${y0} L${X(1) + 7},${y0 + 12}`, fill: 'none', stroke: '#ff6a5a', 'stroke-width': 2.5 }, $('arcs'));
+  fadeTo(rh, 1, tEnd + 1);
+  fadeTo(text($('arcs'), { class: 'lbl', x: (X(9) + X(1)) / 2, y: y0 + 128, fill: '#ff8a7a', 'text-anchor': 'middle', 'font-size': 17 }, 'Reforge  →  dawn at Emberfall again · loop 413'), 1, tEnd + 1);
+  const gold = el('path', { d: `M${X(9)},${y0} C${X(9)},${y0 + 50} ${X(10)},${y0 + 50} ${X(10)},${y0}`, fill: 'none', stroke: '#ffd97a', 'stroke-width': 2.5, filter: 'url(#glow)' }, $('arcs'));
+  fadeTo(gold, 1, tEnd + 1.2, 1.2);
+  const gh = el('path', { d: `M${X(10) - 7},${y0 + 12} L${X(10)},${y0} L${X(10) + 7},${y0 + 12}`, fill: 'none', stroke: '#ffd97a', 'stroke-width': 2.5 }, $('arcs'));
+  fadeTo(gh, 1, tEnd + 2);
+  fadeTo(text($('arcs'), { class: 'lbl', x: (X(9) + X(10)) / 2, y: y0 + 60, fill: '#ffd97a', 'text-anchor': 'middle', 'font-size': 17 }, 'Release'), 1, tEnd + 2);
+  fadeTo(text($('arcs'), { class: 'lbl', x: (X(9) + X(10)) / 2, y: y0 + 80, fill: '#e8d9a8', 'text-anchor': 'middle', 'font-size': 13 }, 'needs all five fragments'), 1, tEnd + 2.2);
+
+  // the Fragments complete: the stranger was Caius
+  later(tEnd + 2.8, () => {
+    qc.setAttribute('stroke', C.caius); qc.setAttribute('stroke-dasharray', ''); qc.setAttribute('filter', 'url(#glow)');
+    qt.textContent = 'C'; qt.setAttribute('fill', C.caius);
+    const w = text(q, { class: 'lbl', x: X(0), y: 394, fill: C.caius, 'text-anchor': 'middle' }, 'it was Caius');
+    w.classList.add('fade-in'); later(0.05, () => w.classList.add('on'));
+  });
+
+  // legend
+  const order = ['aldric', 'seren', 'lyra', 'ashen', 'maelis', 'caius', 'ilse', 'elowen'];
+  const lw = 150, lx0 = 900 - (order.length * lw) / 2 + 20;
+  order.forEach((id, i) => {
+    const th = THREADS.find(t => t.id === id);
+    const g = el('g', { transform: `translate(${lx0 + i * lw},${912})` }, $('legend'));
+    el('line', { x1: 0, x2: 26, y1: 0, y2: 0, stroke: th.color, 'stroke-width': 4, filter: 'url(#glow)', 'stroke-linecap': 'round' }, g);
+    text(g, { x: 34, y: 1 }, th.name);
+    g.addEventListener('pointerenter', () => isolate(th.id));
+    g.addEventListener('pointerleave', () => isolate(null));
+  });
+
+  // hover a column → card
+  COLS.forEach((c, i) => {
+    const r = el('rect', { class: 'hit', x: X(i) - DX / 2, y: 20, width: DX, height: 690 }, $('hits'));
+    r.addEventListener('pointerenter', () => showCard(c));
+    r.addEventListener('pointermove', moveCard);
+    r.addEventListener('pointerleave', () => $('card').classList.remove('show'));
+  });
+}
+
+function isolate(id) {
+  document.querySelectorAll('#threads > g').forEach(g => g.querySelectorAll('path, text, g').forEach(p => p.classList.toggle('dim', !!id && g.dataset.id !== id)));
+}
+function showCard(c) {
+  const card = $('card');
+  card.querySelector('.k').textContent = c.n === 'P' ? 'Prologue' : c.n === 'F' ? 'Finale' : c.n === 'E' ? 'Epilogue' : 'Chapter ' + c.n;
+  card.querySelector('.t').textContent = c.t.join(' ');
+  card.querySelector('.g').textContent = c.goal;
+  card.querySelector('.w').textContent = c.twist;
+  card.classList.add('show');
+}
+function moveCard(e) {
+  const card = $('card'), w = card.offsetWidth, h = card.offsetHeight;
+  card.style.left = Math.min(innerWidth - w - 12, e.clientX + 18) + 'px';
+  card.style.top = Math.min(innerHeight - h - 12, e.clientY + 18) + 'px';
+}
+
+// ───────────────────────── starfield ─────────────────────────
+const sky = $('sky'), ctx = sky.getContext('2d');
+let stars = [];
+function resize() {
+  sky.width = innerWidth * devicePixelRatio; sky.height = innerHeight * devicePixelRatio;
+  stars = Array.from({ length: 260 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 1.3 + 0.2, p: Math.random() * 6.28, s: 0.4 + Math.random() }));
+}
+function drawSky(t) {
+  const w = sky.width, h = sky.height;
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, '#0a0d22'); g.addColorStop(0.6, '#070815'); g.addColorStop(1, '#0c0612');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  for (const s of stars) {
+    ctx.fillStyle = `rgba(210,225,255,${0.35 + 0.35 * Math.sin(t / 1000 * s.s + s.p)})`;
+    ctx.beginPath(); ctx.arc(s.x * w, s.y * h, s.r * devicePixelRatio, 0, 6.29); ctx.fill();
+  }
+  requestAnimationFrame(drawSky);
+}
+addEventListener('resize', resize);
+resize(); requestAnimationFrame(drawSky);
+
+$('replay').addEventListener('click', build);
+document.fonts.ready.then(build);
+</script>
+</body>
+</html>

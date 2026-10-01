@@ -59,5 +59,5 @@ export type SpriteId =
   | 'knight' | 'bmage' | 'wmage'
   | 'slime' | 'goblin' | 'bat' | 'skeleton' | 'wisp' | 'sprout'
   | 'ogre' | 'paladin' | 'wyrm'
-  | 'soldier' | 'captain' | 'ashknight'
+  | 'soldier' | 'captain' | 'ashknight' | 'nell'
   | 'dummy';

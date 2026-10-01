@@ -460,6 +460,48 @@ DEFS.wmage = {
   },
 };
 
+// ===== Nell (the miller's daughter): a child, smaller than the heroes, faces left toward the party
+const N_DRESS = M(208, 0.32, 0.42, 0.1);
+const N_APRON = mat([0x6a5e6e, 0xa89c98, 0xd8cec0, 0xf0e8d8, 0xfffaf0]);
+const N_HAIR = mat([0x3a1c1c, 0x6a3422, 0x9a5a2e, 0xc68648, 0xe8b872]);
+DEFS.nell = {
+  w: 40, h: 48, frames: 4, footY: 46, pad: 1, flip: true,
+  draw(S, f) {
+    const b = BOB4[f];
+    const sw = [0, 1, 1, 0][f];
+    // braid behind
+    S.at(0, b).p(N_HAIR, { cap: 3 }).poly(13, 14, 16, 14, 16, 22, 15, 29, 13, 31 + sw, 11, 29, 12, 22);
+    S.sh(-1).dot(13, 20, 14, 23, 13, 26);
+    S.d(W_RED, 2).rect(12, 29, 3, 1);
+    // legs + shoes
+    S.at(0, 0).p(SKIN).rect(16, 40, 2, 4).rect(21, 40, 2, 4);
+    S.p(LEATHER).rect(15, 44, 4, 2).rect(21, 44, 4, 2);
+    // dress
+    S.p(N_DRESS, { cap: 6 }).poly(16, 22 + b, 24, 22 + b, 26, 28 + b, 27, 36, 29, 42, 9 - sw, 42, 12, 35, 14, 28 + b);
+    S.sh(-1).line(15, 33, 13, 41).line(20, 34, 20, 41);
+    S.d(N_DRESS, 0).line(10 - sw, 42, 28 + sw, 42);
+    // apron, dusted with flour
+    S.at(0, b).p(N_APRON, { cap: 3, base: 3 }).poly(19, 28, 26, 28, 27, 35, 26 + sw, 40 - b, 19, 40 - b, 18, 34);
+    S.d(N_APRON, 1).line(17, 28, 26, 28);
+    S.d(N_APRON, 4).dot(21, 31, 24, 34, 22, 37);
+    // near arm, hands clasped in front
+    S.p(N_DRESS, { io: true, cap: 3, base: 3 }).poly(16, 23, 20, 24, 22, 30, 20, 32, 15, 30);
+    S.p(SKIN, { cap: 2 }).oval(20, 30, 4, 3);
+    // head
+    S.p(SKIN, { flat: true, base: 3 }).oval(15, 9, 11, 12);
+    S.sh(-1).dot(16, 16, 16, 17, 17, 19);
+    S.c(0x3a2a24).dot(23, 14, 23, 15);
+    S.c(EYE_W).dot(24, 14);
+    S.c(0xf08a90).dot(22, 17, 25, 17);
+    S.d(SKIN, 1).dot(24, 19);
+    // hair: a centre part and a fringe
+    S.p(N_HAIR, { cap: 3, spec: true }).poly(14, 12, 16, 8, 20, 7, 24, 8, 26, 11, 26, 13, 23, 11, 21, 13, 20, 11, 18, 14, 17, 20, 15, 20, 14, 16);
+    S.sh(1).line(17, 9, 22, 8);
+    // a smudge of flour on her cheek
+    S.d(N_APRON, 4).dot(21, 18);
+  },
+};
+
 // ===== Slime
 const SLIME = mat([0x173a66, 0x1d6a8a, 0x2ea3a6, 0x62d6c0, 0xd0fff0], 0x0e1c38, 0x1a4a6a);
 const INK = 0x10142a;

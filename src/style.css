@@ -686,3 +686,21 @@ button { font: inherit; color: inherit; }
 @keyframes pip-use { 0% { transform: scale(1.4); background: #fff6c0; box-shadow: 0 0 14px #ffd05a; } 100% { transform: scale(1); } }
 .act-pips i.use::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid #ffd05a; animation: pip-ring 0.5s ease-out forwards; }
 @keyframes pip-ring { from { transform: scale(1); opacity: 1; } to { transform: scale(2.6); opacity: 0; } }
+
+/* ───────── development sandbox ───────── */
+.dev-panel { position: absolute; left: 16px; top: 110px; bottom: 16px; width: 400px; z-index: 50; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px;
+  background: rgba(8, 9, 20, 0.86); border: 1px solid var(--gold-dim); border-radius: 6px; font-size: 18px; }
+.dev-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--title); font-size: 24px; color: var(--gold-hi); }
+.dev-panel label { margin-top: 6px; font-family: var(--title); font-size: 15px; letter-spacing: 0.08em; color: var(--gold); }
+.dev-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.btn.dev-chip { padding: 4px 10px; font-size: 15px; letter-spacing: 0.02em; }
+.btn.dev-chip.on { background: var(--gold-dim); color: #fff; }
+.dev-select { font: inherit; padding: 4px 6px; background: #10101e; color: var(--gold-hi); border: 1px solid var(--gold-dim); border-radius: 4px; }
+.dev-cards { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; margin-top: 4px; scrollbar-width: thin; scrollbar-color: var(--gold-dim) transparent; }
+.btn.dev-card { display: flex; justify-content: space-between; align-items: baseline; flex-shrink: 0; padding: 5px 10px; font-size: 17px; text-align: left; border-left-width: 4px; }
+.dev-meta { font-family: var(--serif); font-size: 15px; font-weight: 400; color: var(--muted); text-transform: capitalize; }
+.dev-card.rarity-uncommon .dev-meta { color: #4fb8e8; }
+.dev-card.rarity-rare .dev-meta { color: #ffcc4d; }
+.dev-card.rarity-special .dev-meta { color: #ff7df0; }
+.dev-panel.collapsed { bottom: auto; }
+.dev-panel.collapsed > :not(.dev-head) { display: none; }

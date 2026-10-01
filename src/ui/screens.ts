@@ -13,7 +13,7 @@ import { h, img } from './dom';
 import { refreshTopBar, topBar } from './hud';
 
 // ───────────────────────── title ─────────────────────────
-export function titleScreen(hasSave: boolean): Promise<'new' | 'continue' | 'skip'> {
+export function titleScreen(hasSave: boolean): Promise<'new' | 'continue' | 'skip' | 'dev'> {
   app.stage.setMode('title', 'ruins', 'shrine');
   app.audio.music('title');
   app.stage.setUnits([]);
@@ -29,6 +29,7 @@ export function titleScreen(hasSave: boolean): Promise<'new' | 'continue' | 'ski
         btn('New Journey', () => resolve('new'), 'title-btn' + (hasSave ? '' : ' primary')),
         btn('Skip Intro', () => resolve('skip'), 'title-btn'),
         btn('Settings', () => settings(), 'title-btn'),
+        import.meta.env.DEV ? btn('Development', () => resolve('dev'), 'title-btn') : null,
       ),
       h('div.title-foot', '“Can you create a Slay the Spired inspired card game with a JRPG twist and look/feel? It should be AAA quality.”'),
     ));

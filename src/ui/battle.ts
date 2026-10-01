@@ -1,7 +1,7 @@
 import { elementIconUrl, intentIconUrl, portraitUrl, uiIconUrl } from '../art';
 import { Battle, type EnemyF, type Ev, type HeroF } from '../game/battle';
 import { cardCost, cardDef } from '../game/cards';
-import { HEROES, MAX_ACTIONS } from '../game/heroes';
+import { HEROES, MAX_ACTIONS, MAX_HAND } from '../game/heroes';
 import { ITEMS } from '../game/loot';
 import { afterBattle, battleInit, encounter, theme, type NodeType, type Run } from '../game/run';
 import type { CardInst, Element, HeroId, Intent, StatusId } from '../game/types';
@@ -23,8 +23,22 @@ const EL_SFX: Record<Element, Sfx> = { phys: 'slash', fire: 'fire', ice: 'ice', 
 
 type Aim = { kind: 'card'; uid: string; sticky: boolean } | { kind: 'item'; slot: number };
 
-/** `setup` adjusts the battle before it starts (e.g. what a Memory reveals); `theme` overrides the lighting. */
-export async function battleScreen(run: Run, type: NodeType, enemies?: string[], opts: { theme?: 'ruins' | 'dusk'; set?: StageSet; setup?: (b: Battle) => void } = {}): Promise<boolean> {
+/** What the development sandbox's panel can do to a running battle. */
+export interface SandboxCtl {
+  /** deal a card into the hand, plain and upgraded */
+  give(id: string): void;
+  clearHand(): void;
+  /** heal everyone and clear statuses, Block and Breaks */
+  reset(): void;
+  ko(id: HeroId): void;
+  exit(): void;
+}
+
+/** `setup` adjusts the battle before it starts (e.g. what a Memory reveals); `theme` overrides the lighting.
+ *  `sandbox` builds a development panel: Actions refill after every play, and the Training Dummy never runs out of HP. */
+export async function battleScreen(run: Run, type: NodeType, enemies?: string[], opts: {
+  theme?: 'ruins' | 'depths' | 'boss' | 'dusk'; set?: StageSet; setup?: (b: Battle) => void; sandbox?: (ctl: SandboxCtl) => HTMLElement;
+} = {}): Promise<boolean> {
   const enc = enemies ? { enemies, hpScale: 1 } : encounter(run, type);
   const b = new Battle(battleInit(run, enc));
   opts.setup?.(b);
@@ -498,6 +512,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[],
   }
 
   function afterAction() {
+    refill();
     renderTop();
     syncAll();
     renderHand();
@@ -523,6 +538,42 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[],
     afterBattle(run, b);
     finish(won);
   }
+
+  // ───────────── development sandbox ─────────────
+  function refill() {
+    if (!opts.sandbox || b.over) return;
+    for (const hr of b.aliveHeroes()) hr.acts = MAX_ACTIONS;
+    for (const e of b.aliveEnemies()) if (e.def === 'dummy') e.hp = e.maxHp;
+  }
+  if (opts.sandbox) root.append(opts.sandbox({
+    give(id) {
+      if (busy) return;
+      for (const upgraded of [false, true]) b.hand.push({ uid: `c${b.uid++}`, id, upgraded });
+      b.hand.splice(0, Math.max(0, b.hand.length - MAX_HAND));
+      renderHand();
+    },
+    clearHand() { if (!busy) { b.hand = []; renderHand(); } },
+    reset() {
+      if (busy) return;
+      for (const u of [...b.heroes, ...b.aliveEnemies()]) {
+        if (u.hp <= 0) { stage.revive(u.id); hud.get(u.id)!.el.classList.remove('ko'); }
+        Object.assign(u, { hp: u.maxHp, block: 0, st: {} });
+      }
+      for (const e of b.aliveEnemies()) { Object.assign(e, { shield: e.maxShield, broken: false, skipped: false, known: [] }); stage.setBroken(e.id, false); }
+      refill();
+      syncAll();
+    },
+    async ko(id) {
+      const hr = b.hero(id);
+      if (busy || hr.hp <= 0 || b.aliveHeroes().length < 2) return;
+      Object.assign(hr, { hp: 0, block: 0, st: {} });
+      busy = true;
+      await step({ t: 'ko', id });
+      busy = false;
+      syncAll();
+    },
+    exit() { finish(false); },
+  }));
 
   // ───────────── event playback ─────────────
   async function playback(evs: Ev[]) {
@@ -690,6 +741,7 @@ export async function battleScreen(run: Run, type: NodeType, enemies?: string[],
   await wait(500);
   await banner(type === 'boss' ? names : type === 'elite' ? `Elite — ${names}` : names, type === 'boss' ? 'boss' : type === 'elite' ? 'elite' : 'plain', 1100);
   await playback(b.start());
+  refill();
   busy = false;
   syncAll();
 

@@ -22,6 +22,7 @@ import { initGamepad } from './ui/gamepad';
 import { endScreen, eventScreen, innScreen, levelUpScreen, rewardsScreen, shopScreen, titleScreen, treasureScreen } from './ui/screens';
 import { placeMapScreen } from './ui/placemap';
 import { chapterCard, chapterComplete, memoryCard, scene } from './ui/story';
+import { sandbox } from './ui/sandbox';
 
 const frame = document.getElementById('frame')!;
 const canvas = document.getElementById('stage') as HTMLCanvasElement;
@@ -164,6 +165,7 @@ async function main() {
   for (;;) {
     const last = load(), saved = last?.story?.known ? last : null; // older runs (the Spire, the old map) can't be continued
     const choice = await titleScreen(!!saved);
+    if (choice === 'dev') { await sandbox(); continue; }
     await playChapter(choice === 'continue' && saved ? saved : choice === 'skip' ? skipIntro() : await openChapter());
   }
 }

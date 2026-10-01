@@ -1104,6 +1104,34 @@ const PORTRAITS: Record<HeroId, (S: P) => void> = {
   },
 };
 
+// ===== Training Dummy (the development sandbox's target)
+const BURLAP = M(34, 0.34, 0.5, 0.1);
+const STRAW = mat([0x6a4a1a, 0xa8802a, 0xd8b44a, 0xf2da7a, 0xfff4c0]);
+DEFS.dummy = {
+  w: 32, h: 46, frames: 4, footY: 44, pad: 1, flip: true,
+  draw(S, f) {
+    const sw = [0, 1, 0, -1][f];
+    // stand and post
+    S.p(WOOD, { cap: 2 }).rect(9, 42, 14, 2).rect(11, 41, 10, 1);
+    S.p(WOOD, { cap: 2, spec: true }).rect(15, 26, 3, 16);
+    // crossbar arms, straw poking out of the ends
+    S.at(sw, 0).p(WOOD, { cap: 2 }).rect(2, 18, 28, 3);
+    S.p(STRAW, { cap: 2 }).path(2, 18, 0, 16).path(2, 20, 0, 22).path(29, 18, 31, 16).path(29, 20, 31, 22);
+    // stuffed body, roped at the waist, a target painted on the chest
+    S.p(BURLAP, { cap: 6, spec: true }).oval(8, 14, 16, 18);
+    S.c(0x3a2414).line(9, 27, 22, 27);
+    S.d(W_RED, 2).oval(12, 17, 8, 8);
+    S.d(BURLAP, 3).oval(13, 18, 6, 6);
+    S.d(W_RED, 2).rect(15, 20, 2, 2);
+    // sack head with stitched eyes and a straw tuft
+    S.p(STRAW, { cap: 2 }).path(13, 2, 12, 0).path(16, 2, 16, 0).path(19, 2, 20, 0);
+    S.p(BURLAP, { cap: 5, spec: true }).oval(10, 2, 12, 12);
+    S.c(0x3a2414).line(12, 6, 14, 8).line(14, 6, 12, 8).line(17, 6, 19, 8).line(19, 6, 17, 8).line(13, 11, 18, 11);
+    S.c(0x3a2414).dot(11, 13, 13, 13, 15, 13, 17, 13, 19, 13);
+    S.at(0, 0);
+  },
+};
+
 // ---------------------------------------------------------------- build + cache
 function build(def: Def): SpriteSheet {
   const pad = def.pad ?? 0, h = def.h + pad;

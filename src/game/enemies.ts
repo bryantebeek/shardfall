@@ -155,6 +155,12 @@ const defs: EnemyDef[] = [
     },
     pick: (e, rng, t) => t === 0 ? 'foreknow' : vary(e, rng, { blade: 40, arc: 30, forLyra: 15, foreknow: 15 }, 1),
     onHp: (b, e) => { if (e.hp <= e.maxHp / 2) b.finish(true); } },
+
+  // ───── Development ─────
+  // the sandbox's target: weak to everything so every element breaks it, and it never fights back
+  { id: 'dummy', name: 'Training Dummy', sprite: 'dummy', hp: [999, 999], shield: 3, weak: ['phys', 'fire', 'ice', 'thunder', 'holy'], tier: 'normal',
+    moves: { wobble: { name: 'Wobble', kind: 'defend' } },
+    pick: () => 'wobble' },
 ];
 
 export const ENEMIES: Record<string, EnemyDef> = Object.fromEntries(defs.map(d => [d.id, d]));

@@ -33,6 +33,7 @@ Battle speed (1×/1.5×/2×) is in Settings.
 - `src/audio/` — synthesized music and sound effects. Contract: `audio/api.ts`.
 - `src/ui/` — DOM screens and the battle controller that plays back engine events.
 
+Development menu (title screen, `npm run dev` only): a sandbox battle against a Training Dummy that never fights back or runs out of HP. Pick the set and lighting, swap the dummy for any enemy, and click any card (filter by hero, sort by rarity or A–Z) to deal it and its upgrade into your hand; Actions refill after every play. Reset, Clear hand, and KO a hero (to try Raise) are there too.
 Dev pages: `art-preview.html`, `art2-preview.html`, `stage-preview.html`, `audio-preview.html`.
 Dev shortcuts: `/?dev=opening`, `/?dev=map&memories=guard,bridge,well`, `/?dev=ending`, `/?dev=battle&enemies=soldier,ashknight,soldier&type=boss`, `/?dev=event&event=mill`, `/?dev=shop`, `/?dev=inn`, `/?dev=rewards`, `/?dev=levelup`.
 Automated UI tests (need `npm run build && npx vite preview --port 5320`): `node scripts/playtest.mjs`, `node scripts/fullrun.mjs`.

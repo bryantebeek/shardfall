@@ -446,7 +446,7 @@ button { font: inherit; color: inherit; }
 .legend-row img { width: 32px; height: 32px; }
 
 /* ───────────────────────── rewards / level up ───────────────────────── */
-.reward-screen, .inn-screen, .treasure-screen, .event-screen { display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.7)); }
+.reward-screen, .inn-screen, .treasure-screen { display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.7)); }
 .reward-window { width: 640px; margin-top: 50px; }
 .reward-list { display: flex; flex-direction: column; gap: 10px; }
 .reward-row { width: 100%; text-align: left; padding: 10px 18px; font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--text); }
@@ -526,18 +526,6 @@ button { font: inherit; color: inherit; }
 .shop-item.sold { opacity: 0.4; cursor: default; }
 .shop-leave { position: absolute; right: 90px; bottom: 50px; margin: 0; }
 
-.event-window { width: 1300px; margin-top: 50px; display: flex; gap: 40px; align-items: flex-start; }
-.event-art { flex: none; width: 448px; height: 280px; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--gold-dim), 0 0 40px rgba(0, 0, 0, 0.6); }
-.event-art img { width: 100%; height: 100%; }
-.event-body { flex: 1; }
-.event-body .window-title { text-align: left; }
-.event-text { text-align: left; font-style: italic; }
-.event-options { display: flex; flex-direction: column; gap: 10px; }
-.event-btn { text-align: left; padding: 14px 20px; }
-.event-opt { font-family: var(--serif); font-size: 24px; letter-spacing: 0; display: flex; gap: 10px; flex-wrap: wrap; }
-.event-opt b { font-family: var(--title); color: var(--gold-hi); }
-.event-opt span { font-weight: 600; color: var(--text); }
-.event-opt em { color: #d07a6a; }
 
 .picker h3 { font-family: var(--title); font-size: 34px; color: var(--gold-hi); text-align: center; }
 .hero-pick { display: flex; gap: 20px; }
@@ -606,6 +594,17 @@ button { font: inherit; color: inherit; }
 .dlg-next { font-size: 18px; padding: 6px 24px; }
 .dlg-skip { font-size: 16px; padding: 6px 18px; opacity: 0.7; }
 /* the prologue: lines in the dark, no box */
+.dlg-choices { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.dlg-choices:empty { display: none; }
+.dlg-choice { text-align: left; padding: 12px 20px; animation: dlg-in 0.35s ease both; }
+.dlg-choice:nth-child(2) { animation-delay: 0.06s; }
+.dlg-choice:nth-child(3) { animation-delay: 0.12s; }
+.dlg-opt { display: flex; gap: 14px; align-items: baseline; font-family: var(--serif); font-size: 24px; letter-spacing: 0; }
+.dlg-opt b { font-family: var(--title); color: var(--gold-hi); white-space: nowrap; }
+.dlg-opt span { color: var(--text); }
+.place-title { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); font-family: var(--title); font-size: 44px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-hi); text-shadow: 0 2px 14px #000, 0 0 30px rgba(0, 0, 0, 0.8); animation: place-in 1.2s ease both; pointer-events: none; }
+.place-title::after { content: ''; display: block; height: 2px; margin: 10px auto 0; width: 70%; background: linear-gradient(90deg, transparent, var(--gold-dim), transparent); }
+@keyframes place-in { from { opacity: 0; letter-spacing: 0.3em; } to { opacity: 1; letter-spacing: 0.14em; } }
 .dlg.cinematic { top: 50%; bottom: auto; transform: translate(-50%, -50%); width: 1200px; justify-content: center; }
 .dlg.cinematic .dlg-name, .dlg.cinematic .dlg-face { display: none !important; }
 .dlg.cinematic .dlg-text { font-size: 42px; font-style: italic; color: #f4e6cc; text-align: center; text-shadow: 0 2px 12px #000; }
@@ -655,7 +654,6 @@ button { font: inherit; color: inherit; }
 .pm-road.walked { stroke: #ffe6a8; stroke-dasharray: none; filter: drop-shadow(0 0 4px rgba(255, 220, 140, 0.8)); }
 .pm-road.open { stroke: #ffd98a; animation: pm-march 1.2s linear infinite; }
 @keyframes pm-march { to { stroke-dashoffset: -42; } }
-.pm-ghost { fill: none; stroke: #9fe8ff; stroke-width: 3; stroke-dasharray: 3 10; stroke-linecap: round; opacity: 0.5; }
 .pm-fog { fill: #07080f; opacity: 0.93; }
 .pmap-layer .map-node.remembered { opacity: 0.7; }
 .pmap-layer .map-node.remembered .map-node-label { font-style: italic; color: #9fe8ff; }
@@ -664,17 +662,13 @@ button { font: inherit; color: inherit; }
 .pmap-layer.moving .map-node { pointer-events: none; }
 .pmap-ambush { position: absolute; width: 32px; height: 32px; transform: translate(-50%, -50%); border-radius: 50%; display: grid; place-items: center; background: #1c1020; box-shadow: 0 0 0 2px #c03a30, 0 0 10px rgba(220, 60, 50, 0.5); }
 .pmap-ambush img { width: 20px; height: 20px; }
-.pmap-fall { position: absolute; width: 30px; height: 30px; transform: translate(-50%, -50%) rotate(8deg); display: grid; place-items: center; filter: drop-shadow(0 0 8px #9fe8ff); opacity: 0.85; }
-.pmap-fall img { width: 26px; height: 26px; }
 .pmap-party { position: absolute; left: 0; top: 0; z-index: 5; display: flex; gap: 2px; padding: 3px 5px; border-radius: 16px; background: rgba(8, 9, 20, 0.85); box-shadow: 0 0 0 2px var(--gold), 0 4px 10px rgba(0, 0, 0, 0.6);
   transition: transform 0.7s cubic-bezier(0.45, 0, 0.3, 1); pointer-events: none; }
 .pmap-party img { width: 28px; height: 28px; border-radius: 50%; image-rendering: pixelated; }
 .pmap-key { position: absolute; left: 90px; top: 740px; width: 380px; display: flex; flex-direction: column; gap: 8px; font-size: 19px; color: var(--muted); }
 .pmap-key > div { display: flex; align-items: center; gap: 12px; }
 .pmap-key img { width: 26px; height: 26px; }
-.pmap-key-road, .pmap-key-ghost { display: inline-block; width: 26px; height: 0; border-top: 4px solid #ffe6a8; }
-.pmap-key-ghost { border-top: 3px dotted #9fe8ff; }
-
+.pmap-key-road, 
 .act-pips { display: inline-flex; gap: 4px; margin-right: 8px; vertical-align: 1px; pointer-events: auto; }
 .act-pips.ko { display: none; }
 .act-pips i { width: 12px; height: 12px; border-radius: 50%; background: #1e1a2a; box-shadow: inset 0 0 0 2px #5a5468; }

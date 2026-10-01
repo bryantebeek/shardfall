@@ -1,35 +1,48 @@
 import { describe, expect, it } from 'vitest';
 import { Battle } from './battle';
-import { MEMORIES, PLACES, START, beginAttempt, exits, newStory, placeEnemies, rewind, stepsRun, travel } from './chapter1';
+import { MEMORIES, START, beginAttempt, exits, newStory, placeEnemies, revealed, rewind, stepsRun, travel } from './chapter1';
 import { battleInit } from './run';
 
 describe('Chapter 1: Emberfall', () => {
-  it('every way out of the village reaches the hill, and side trips lead back', () => {
-    const ends = new Set<string>();
-    const walk = (path: number[]) => {
-      const run = beginAttempt(newStory());
-      for (const id of path.slice(1)) travel(run, id);
-      const opts = exits(run);
-      if (PLACES[run.at!].kind === 'boss') { ends.add(path.join('>')); return; }
-      expect(opts.length, `stuck at ${PLACES[run.at!].name}`).toBeGreaterThan(0);
-      for (const o of opts) walk([...path, o.to.id]);
-    };
-    walk([START]);
-    expect(ends.size).toBeGreaterThan(4);
-    // a side trip: the Mill, then back to the square (no second ambush on the way back)
-    const run = beginAttempt(newStory());
-    expect(travel(run, 2).ambush).toBe(true);
-    expect(travel(run, 3).ambush).toBe(true);
-    expect(exits(run).map(e => e.to.id)).toEqual([2]);
-    const back = travel(run, 2);
-    expect(back.ambush).toBe(false);
-    expect(back.arrive).toBe(false);
-    expect(exits(run).map(e => e.to.id)).not.toContain(3);
+  it('every attempt draws a new Emberfall: every way out reaches the hill, side trips lead back', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      let ends = 0;
+      const walk = (path: number[]) => {
+        const run = beginAttempt(newStory(), seed);
+        for (const id of path.slice(1)) travel(run, id);
+        if (run.places![run.at!].kind === 'boss') { ends++; return; }
+        const opts = exits(run);
+        expect(opts.length, `stuck at ${run.places![run.at!].name} (seed ${seed})`).toBeGreaterThan(0);
+        for (const o of opts) walk([...path, o.to.id]);
+      };
+      walk([START]);
+      expect(ends).toBeGreaterThan(1);
+      const run = beginAttempt(newStory(), seed), ps = run.places!;
+      // the story's places are always somewhere, and there's somewhere to rest before the hill
+      expect(ps.filter(p => p.event === 'mill')).toHaveLength(1);
+      expect(ps.filter(p => p.event === 'bridge')).toHaveLength(1);
+      expect(ps.some(p => p.kind === 'inn')).toBe(true);
+      expect(new Set(ps.map(p => p.name)).size).toBe(ps.length);
+    }
+    // a side trip is free to walk back from, and doesn't come up again
+    for (let seed = 1; ; seed++) {
+      const run = beginAttempt(newStory(), seed);
+      const road = run.roads!.find(r => run.places![r.to].spur && r.from !== START && run.roads!.some(q => q.from === START && q.to === r.from));
+      if (!road) continue;
+      travel(run, road.from);
+      travel(run, road.to);
+      expect(exits(run).map(e => e.to.id)).toEqual([road.from]);
+      const back = travel(run, road.from);
+      expect(back.ambush).toBe(false);
+      expect(back.arrive).toBe(false);
+      expect(exits(run).map(e => e.to.id)).not.toContain(road.to);
+      break;
+    }
   });
 
-  it('each fall returns to dawn with the next Memory, and undoes what was done', () => {
+  it('each fall returns to dawn on a new map, with the next Memory, and undoes what was done', () => {
     let run = beginAttempt(newStory());
-    travel(run, 2);
+    const first = run.places!.map(p => p.name).join();
     run.flags!.push('bridgeDown');
     run.shards = 999;
     const got: string[] = [];
@@ -39,19 +52,28 @@ describe('Chapter 1: Emberfall', () => {
       run = r.run;
     }
     expect(got).toEqual(MEMORIES.map(m => m.id));
-    // the route and where it ended stay on the map; Memories reveal places
-    expect(run.story!.trails[0]).toEqual([START, 2]);
-    expect(run.story!.falls[0]).toEqual({ attempt: 1, from: 2, to: 2 });
-    expect(run.story!.known).toEqual(expect.arrayContaining([START, 2, 5, 3]));
+    expect(run.places!.map(p => p.name).join()).not.toBe(first);
+    // Memories show where their places are on the new map
+    expect(revealed(run).map(p => p.event).sort()).toEqual(['bridge', 'mill']);
     expect(run.path).toEqual([START]);
     expect(run.story!.attempt).toBe(MEMORIES.length + 2);
     expect(run.flags).toEqual([]);
     expect(run.shards).toBe(60);
   });
 
+  it('the deserter\'s warning spares the next ambush', () => {
+    const run = beginAttempt(newStory(), 5);
+    const road = run.roads!.find(r => r.from === START && r.ambush)!;
+    run.flags!.push('patrolsKnown');
+    const step = travel(run, road.to);
+    expect(step.ambush).toBe(false);
+    expect(step.dodged).toBe(true);
+    expect(run.flags).toEqual([]);
+  });
+
   it('bringing down the north bridge keeps the soldiers off the hill', () => {
     const run = beginAttempt(newStory());
-    const hill = PLACES.find(p => p.kind === 'boss')!;
+    const hill = run.places!.find(p => p.kind === 'boss')!;
     expect(placeEnemies(run, hill)).toEqual(['soldier', 'ashknight', 'soldier']);
     run.flags!.push('bridgeDown');
     expect(placeEnemies(run, hill)).toEqual(['ashknight']);

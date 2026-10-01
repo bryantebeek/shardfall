@@ -3,7 +3,7 @@
 A story-driven JRPG deckbuilder with an HD-2D (Octopath Traveler-like) look, running in the browser. How it plays: [MECHANICS.md](MECHANICS.md). The story: [STORY.md](STORY.md).
 
 - **Story mode**: New Journey plays the Prologue and Chapter 1, *Emberfall* (see [STORY.md](STORY.md)). Fall, and Seren's Hourglass sends the party back to dawn with a new **Memory** (Foresight, Pathfinding, People) that changes the next attempt.
-- **The map remembers**: Emberfall is a real place with roads, and fights happen on the roads. Fog hides what you haven't seen; earlier attempts leave their route, where they fell, and what Memories revealed.
+- **A new Emberfall every attempt**: a place map with roads, drawn fresh after every fall (places, side trips, events, shops, rests, elites, ambushes). Fights happen on the roads, fog hides what's ahead, and Memories show where their places are.
 - **Party of three**: Aldric the Knight, Lyra the Black Mage, Seren the White Mage. Separate HP, one shared deck. KO'd heroes' cards go dead.
 - **Actions per hero**: each hero gains an Action every turn and can hold two; a card costs its dots, Swift cards are free. Hold a hero to afford a 2-dot card or to act twice.
 - **Break system**: enemies have shields and hidden elemental weaknesses. Hit weaknesses to break them: they lose a turn, take +50% damage, and pay out **Crystal Shards**, the currency.
@@ -35,5 +35,5 @@ Battle speed (1×/1.5×/2×) is in Settings.
 
 Development menu (title screen, `npm run dev` only): a sandbox battle against a Training Dummy that never fights back or runs out of HP. Pick the set and lighting, swap the dummy for any enemy, and click any card (filter by hero, sort by rarity or A–Z) to deal it and its upgrade into your hand; Actions refill after every play. Reset, Clear hand, and KO a hero (to try Raise) are there too.
 Dev pages: `art-preview.html`, `art2-preview.html`, `stage-preview.html`, `audio-preview.html`.
-Dev shortcuts: `/?dev=opening`, `/?dev=map&memories=guard,bridge,well`, `/?dev=ending`, `/?dev=battle&enemies=soldier,ashknight,soldier&type=boss`, `/?dev=event&event=mill`, `/?dev=shop`, `/?dev=inn`, `/?dev=rewards`, `/?dev=levelup`.
+Dev shortcuts: `/?dev=opening`, `/?dev=map&memories=guard,bridge,well&seed=7&flags=towerClimbed`, `/?dev=ending`, `/?dev=battle&enemies=soldier,ashknight,soldier&type=boss`, `/?dev=event&event=mill`, `/?dev=shop`, `/?dev=inn`, `/?dev=rewards`, `/?dev=levelup`.
 Automated UI tests (need `npm run build && npx vite preview --port 5320`): `node scripts/playtest.mjs`, `node scripts/fullrun.mjs`.

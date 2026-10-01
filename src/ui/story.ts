@@ -1,70 +1,92 @@
 // Story screens: dialogue scenes over the stage, chapter cards, Memories, and the chapter's end.
 import { getSprite, portraitUrl } from '../art';
-import { MEMORIES, type Memory, type Scene, type Speaker, type Story } from '../game/chapter1';
-import type { HeroId } from '../game/types';
+import { MEMORIES, type Line, type Memory, type Scene, type Speaker, type Story } from '../game/chapter1';
+import type { HeroId, SpriteId } from '../game/types';
 import { app, btn, mount } from './app';
 import { h } from './dom';
 
-let ashFace = '';
-/** the Ashen Knight has no portrait: use his sprite */
-function ashenFace(): string {
-  if (!ashFace) {
-    const s = getSprite('ashknight'), c = document.createElement('canvas');
-    c.width = s.w; c.height = s.h;
-    c.getContext('2d')!.drawImage(s.canvas, 0, 0, s.w, s.h, 0, 0, s.w, s.h);
-    ashFace = c.toDataURL();
+const faces = new Map<SpriteId, string>();
+/** people without a portrait use their sprite's first frame, or its top `h` pixels */
+const spriteFace = (id: SpriteId, h?: number) => () => {
+  if (!faces.has(id)) {
+    const s = getSprite(id), c = document.createElement('canvas');
+    c.width = s.w; c.height = h ?? s.h;
+    c.getContext('2d')!.drawImage(s.canvas, 0, 0, s.w, c.height, 0, 0, s.w, c.height);
+    faces.set(id, c.toDataURL());
   }
-  return ashFace;
-}
+  return faces.get(id)!;
+};
 const hero = (id: HeroId) => () => portraitUrl(id);
 const SPEAKERS: Record<Speaker, { name: string; face?: () => string }> = {
   aldric: { name: 'Aldric', face: hero('knight') },
   lyra: { name: 'Lyra', face: hero('bmage') },
   seren: { name: 'Seren', face: hero('wmage') },
-  ashen: { name: 'The Ashen Knight', face: ashenFace },
+  ashen: { name: 'The Ashen Knight', face: spriteFace('ashknight') },
   caravan: { name: 'Caravan master' },
   stranger: { name: 'The knight' },
+  nell: { name: 'Nell', face: spriteFace('nell', 34) },
 };
 
-/** Click, Enter or Space advances; Skip jumps to the end. */
-export function scene(s: Scene): Promise<void> {
+/** A dialogue box over the stage. `say` plays lines (click, Enter or Space advances; Skip jumps past them);
+ *  `choose` shows choices under the last line. */
+export function talk(opts: { cinematic?: boolean; title?: string; top?: HTMLElement } = {}) {
+  const face = h('img.dlg-face'), name = h('div.dlg-name'), text = h('p.dlg-text'), choices = h('div.dlg-choices');
+  const box = h('div.dlg' + (opts.cinematic ? '.cinematic' : '.window'), face, h('div.dlg-body', name, text, choices));
+  let wake: (() => void) | null = null, skipped = false;
+  const advance = () => { const w = wake; wake = null; w?.(); };
+  const btns = h('div.dlg-btns', btn('Next', advance, 'dlg-next'), btn('Skip', () => { skipped = true; advance(); }, 'dlg-skip'));
+  const root = mount(h('div.story-screen' + (opts.cinematic ? '.cinematic' : ''),
+    opts.top ?? '', opts.title ? h('div.place-title', opts.title) : '', box, btns));
+  root.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('button')) advance(); });
+  const key = (e: KeyboardEvent) => {
+    if (document.querySelector('.modal-back')) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); advance(); }
+  };
+  document.addEventListener('keydown', key);
+  const show = (l: Line) => {
+    const sp = l.who ? SPEAKERS[l.who] : null;
+    if (l.cast) app.stage.setUnits(l.cast);
+    if (l.fx === 'flash') app.stage.flash('#ffffff');
+    if (l.fx === 'shake') app.stage.shake(0.6);
+    box.classList.toggle('narration', !sp);
+    name.textContent = sp?.name ?? '';
+    face.style.display = sp?.face ? '' : 'none';
+    if (sp?.face) (face as HTMLImageElement).src = sp.face();
+    text.textContent = sp && opts.cinematic ? `“${l.text}”` : l.text;
+    text.classList.remove('in'); void text.offsetWidth; text.classList.add('in');
+    app.audio.sfx('click');
+  };
+  return {
+    async say(lines: Line[]) {
+      skipped = false;
+      btns.style.visibility = '';
+      for (const l of lines) {
+        if (skipped) break;
+        show(l);
+        await new Promise<void>(r => { wake = r; });
+      }
+    },
+    choose<T extends { label: string; desc: string }>(list: T[]): Promise<T> {
+      btns.style.visibility = 'hidden';
+      return new Promise(resolve => choices.replaceChildren(...list.map(o =>
+        btn(h('span.dlg-opt', h('b', o.label), h('span', o.desc)), () => {
+          choices.replaceChildren();
+          app.audio.sfx('select');
+          resolve(o);
+        }, 'dlg-choice'))));
+    },
+    close() { document.removeEventListener('keydown', key); },
+  };
+}
+
+export async function scene(s: Scene): Promise<void> {
   app.stage.setMode(s.cinematic ? 'title' : 'battle', s.theme, s.set);
   app.stage.setUnits([]);
   app.stage.setUnits(s.cast);
   app.audio.music(s.theme === 'dusk' ? 'elite' : 'inn');
-  return new Promise(resolve => {
-    let i = -1;
-    const face = h('img.dlg-face'), name = h('div.dlg-name'), text = h('p.dlg-text');
-    const box = h('div.dlg' + (s.cinematic ? '.cinematic' : '.window'), face, h('div.dlg-body', name, text));
-    const next = btn('Next', () => advance(), 'dlg-next');
-    const root = mount(h('div.story-screen' + (s.cinematic ? '.cinematic' : ''), box,
-      h('div.dlg-btns', next, btn('Skip', () => done(), 'dlg-skip'))));
-    root.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('button')) advance(); });
-    const key = (e: KeyboardEvent) => {
-      if (document.querySelector('.modal-back')) return;
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); advance(); }
-    };
-    document.addEventListener('keydown', key);
-    function advance() {
-      if (++i >= s.lines.length) return done();
-      const l = s.lines[i], sp = l.who ? SPEAKERS[l.who] : null;
-      if (l.cast) app.stage.setUnits(l.cast);
-      if (l.fx === 'flash') app.stage.flash('#ffffff');
-      if (l.fx === 'shake') app.stage.shake(0.6);
-      box.classList.toggle('narration', !sp);
-      name.textContent = sp?.name ?? '';
-      face.style.display = sp?.face ? '' : 'none';
-      if (sp?.face) (face as HTMLImageElement).src = sp.face();
-      text.textContent = sp && s.cinematic ? `“${l.text}”` : l.text;
-      text.classList.remove('in'); void text.offsetWidth; text.classList.add('in');
-      app.audio.sfx('click');
-    }
-    function done() {
-      document.removeEventListener('keydown', key);
-      resolve();
-    }
-    advance();
-  });
+  const t = talk({ cinematic: s.cinematic });
+  await t.say(s.lines);
+  t.close();
 }
 
 /** a title card between scenes */

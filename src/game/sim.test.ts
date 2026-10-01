@@ -4,7 +4,7 @@ import { describe, it } from 'vitest';
 import { Battle, type EnemyF } from './battle';
 import { cardDef, CARDS } from './cards';
 import { Rng } from './rng';
-import { afterBattle, battleInit, battleRewards, encounter, gainXp, levelUpChoices, newCard, newRun, restHeal, upgradable, upgradeCard, type NodeType, type Run } from './run';
+import { afterBattle, battleInit, battleRewards, encounter, gainXp, levelUpChoices, newCard, newRun, restHeal, treasure, upgradable, upgradeCard, type NodeType, type Run } from './run';
 
 function clone(b: Battle): Battle {
   const c = Object.assign(Object.create(Battle.prototype), structuredClone({ ...b, rng: { s: b.rng.s } })) as Battle;
@@ -127,7 +127,7 @@ describe.skipIf(!env.SIM)('balance sim', () => {
 // Chapter 1: one route out of Emberfall (square → lane → hayloft → forest road → ridge → hill road → the hill), with and without Memories.
 describe.skipIf(!env.SIM)('chapter 1 sim', () => {
   it('escapes Emberfall', async () => {
-    const { beginAttempt, knightSetup, newStory, placeEnemies, roadEnemies, travel } = await import('./chapter1');
+    const { beginAttempt, exits, knightSetup, newStory, placeEnemies, roadEnemies, travel } = await import('./chapter1');
     const N = Number(env.SIM_N ?? 100);
     const lines: string[] = [];
     for (const mem of [[], ['guard'], ['guard', 'bridge']]) {
@@ -151,16 +151,22 @@ describe.skipIf(!env.SIM)('chapter 1 sim', () => {
           for (let u = 0; u < ups; u++) run.deck.push(newCard(run, r.pick(levelUpChoices(run))));
           return true;
         };
-        // the forest route with the mill on the way: square, mill and back, forest edge, the hut (rest), the hill
-        let alive = true;
-        for (const id of [2, 3, 2, 7, 9, 10]) {
-          const step = travel(run, id);
-          if (step.ambush && !battle('battle', roadEnemies(run, step.road))) { alive = false; break; }
+        // a random route over this attempt's map, like the old one: no elites, rest when hurt, treasure when it's there
+        const hurt = () => run.heroes.some(h => h.hp < h.maxHp * 0.6);
+        for (;;) {
+          const all = exits(run), safe = all.filter(o => o.back || o.to.kind !== 'elite');
+          const opts = safe.length ? safe : all;
+          const inn = opts.find(o => o.to.kind === 'inn');
+          const o = inn && hurt() ? inn : r.pick(opts);
+          const step = travel(run, o.to.id);
+          if (step.ambush && !battle('battle', roadEnemies(run, step.road))) break;
           if (!step.arrive) continue;
-          if (step.place.kind === 'inn' && run.heroes.some(h => h.hp < h.maxHp * 0.6)) restHeal(run);
-          if (step.place.kind === 'boss') { reach++; if (battle('boss', placeEnemies(run, step.place))) wins++; }
+          const k = step.place.kind;
+          if (k === 'inn' && hurt()) restHeal(run);
+          if (k === 'treasure') run.shards += treasure(run).shards;
+          if (k === 'elite' && !battle('elite', placeEnemies(run, step.place))) break;
+          if (k === 'boss') { reach++; if (battle('boss', placeEnemies(run, step.place))) wins++; break; }
         }
-        void alive;
       }
       lines.push(`memories [${mem.join(', ') || 'none'}]`.padEnd(34) + `reach the hill ${Math.round((100 * reach) / N)}%   escape ${Math.round((100 * wins) / N)}%`);
     }

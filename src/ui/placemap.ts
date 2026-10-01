@@ -1,7 +1,7 @@
-// The chapter map: Emberfall as a place, not a ladder. Roads between real locations, fog over what the
-// party hasn't seen, and what earlier attempts left behind (their routes, and where they fell).
+// The chapter map: Emberfall as a place, not a ladder. Roads between real locations (a new map every attempt),
+// fog over what the party hasn't seen, and the places their Memories point to.
 import { portraitUrl, uiIconUrl, type UiIcon } from '../art';
-import { PLACES, ROADS, exits, here, storySet, storyTheme, type PlaceKind, type Road } from '../game/chapter1';
+import { exits, here, revealed, storySet, storyTheme, type Place, type PlaceKind, type Road } from '../game/chapter1';
 import { Rng } from '../game/rng';
 import type { Run } from '../game/run';
 import { app, mount } from './app';
@@ -18,54 +18,68 @@ function s(tag: string, attrs: Record<string, string | number> = {}, ...kids: SV
   return el;
 }
 
-const ICON: Record<PlaceKind, UiIcon> = { start: 'crystal', crossroads: 'map', event: 'event', shop: 'shop', inn: 'inn', elite: 'elite', boss: 'sword' };
-const KIND: Record<PlaceKind, string> = { start: 'Start', crossroads: 'Crossroads', event: 'Something to find', shop: 'Market', inn: 'Rest', elite: 'Elite fight', boss: 'The end of the road' };
+const ICON: Record<PlaceKind, UiIcon> = { start: 'crystal', crossroads: 'map', event: 'event', shop: 'shop', inn: 'inn', elite: 'elite', treasure: 'treasure', boss: 'sword' };
+const KIND: Record<PlaceKind, string> = { start: 'Start', crossroads: 'Crossroads', event: 'Something to find', shop: 'Market', inn: 'Rest', elite: 'Elite fight', treasure: 'Treasure', boss: 'The end of the road' };
 
 /** a road bends a little, always the same way */
-function curve(r: Road) {
-  const a = PLACES[r.from], b = PLACES[r.to];
+function curve(places: Place[], r: Road) {
+  const a = places[r.from], b = places[r.to];
   const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
   const bend = ((r.from * 7 + r.to * 13) % 2 ? 1 : -1) * len * 0.12;
   const cx = (a.x + b.x) / 2 - (dy / len) * bend, cy = (a.y + b.y) / 2 + (dx / len) * bend;
   return { d: `M${a.x} ${a.y} Q${cx} ${cy} ${b.x} ${b.y}`, mid: { x: (a.x + 2 * cx + b.x) / 4, y: (a.y + 2 * cy + b.y) / 4 } };
 }
 
-/** the land itself: fields, the village, the forest, the river and the hill (drawn once, the same every time) */
-function terrain(): SVGElement {
-  const r = new Rng(1207), g = s('g');
-  const near = (x: number, y: number, d: number) => PLACES.some(p => Math.hypot(p.x - x, p.y - y) < d);
-  g.append(s('defs', {}, s('radialGradient', { id: 'pm-ground', cx: '50%', cy: '55%', r: '75%' },
-    s('stop', { offset: '0', 'stop-color': '#2e2838' }), s('stop', { offset: '1', 'stop-color': '#110f18' }))));
-  g.append(s('rect', { width: W, height: H, fill: 'url(#pm-ground)' }));
-  // fields south-west of the village
-  for (const [x, y, w, hh, a] of [[70, 620, 220, 110, -8], [110, 760, 260, 100, 6], [300, 560, 150, 90, -14]]) {
-    const f = s('g', { transform: `rotate(${a} ${x + w / 2} ${y + hh / 2})` }, s('rect', { x, y, width: w, height: hh, rx: 6, fill: '#2a2a22', stroke: '#3a3a2c' }));
-    for (let k = 1; k < 6; k++) f.append(s('line', { x1: x + 6, y1: y + (hh / 6) * k, x2: x + w - 6, y2: y + (hh / 6) * k, stroke: '#3c3c2e', 'stroke-width': 2 }));
-    g.append(f);
-  }
-  // the hill: contour lines
-  for (const [rx, ry, o] of [[270, 100, 0.25], [195, 72, 0.3], [125, 46, 0.35]]) g.append(s('ellipse', { cx: 600, cy: 130, rx, ry, fill: '#241e2e', 'fill-opacity': 0.5, stroke: '#7a6a8a', 'stroke-opacity': o, 'stroke-width': 2 }));
-  // the forest
-  for (let k = 0; k < 140; k++) {
-    const x = 740 + r.next() * 570, y = 150 + r.next() * 380;
-    if (near(x, y, 62)) continue;
+/** the land around this attempt's places: houses by the village's, trees by the forest's, a river under the bridge, the hill */
+function terrain(run: Run): SVGElement {
+  const places = run.places!, r = new Rng(run.seed), g = s('g');
+  const near = (x: number, y: number, d: number) => places.some(p => Math.hypot(p.x - x, p.y - y) < d);
+  const around = (p: Place, n: number, f: (x: number, y: number) => void) => {
+    for (let k = 0; k < n; k++) {
+      const a = r.next() * Math.PI * 2, d = 55 + r.next() * 60, x = p.x + Math.cos(a) * d, y = p.y + Math.sin(a) * d * 0.7;
+      if (!near(x, y, 48)) f(x, y);
+    }
+  };
+  const tree = (x: number, y: number) => {
     const sc = 0.8 + r.next() * 0.6;
     g.append(s('polygon', { points: `${x},${y - 20 * sc} ${x - 12 * sc},${y + 6 * sc} ${x + 12 * sc},${y + 6 * sc}`, fill: r.next() < 0.5 ? '#1c3a2c' : '#21442f', stroke: '#2e5a40', 'stroke-width': 1 }));
-  }
-  // the village: houses around the square, the shrine, the market and the mill
-  for (let k = 0; k < 40; k++) {
-    const x = 480 + r.next() * 560, y = 520 + r.next() * 340;
-    if (near(x, y, 58) || (x > 980 && y < 600)) continue;
+  };
+  const house = (x: number, y: number) => {
     const w = 22 + r.next() * 12, hh = 14 + r.next() * 6;
     g.append(s('rect', { x: x - w / 2, y: y - hh / 2, width: w, height: hh, fill: '#3a2e2a', stroke: '#1a1412' }),
       s('polygon', { points: `${x - w / 2 - 3},${y - hh / 2} ${x},${y - hh / 2 - 10} ${x + w / 2 + 3},${y - hh / 2}`, fill: '#6a3e30', stroke: '#1a1412' }));
     if (r.next() < 0.45) g.append(s('rect', { x: x - 3, y: y - 3, width: 5, height: 5, fill: '#ffcf7a', opacity: 0.85 }));
+  };
+  g.append(s('defs', {}, s('radialGradient', { id: 'pm-ground', cx: '50%', cy: '55%', r: '75%' },
+    s('stop', { offset: '0', 'stop-color': '#2e2838' }), s('stop', { offset: '1', 'stop-color': '#110f18' }))));
+  g.append(s('rect', { width: W, height: H, fill: 'url(#pm-ground)' }));
+  // fields on the village side
+  for (let k = 0; k < 5; k++) {
+    const w = 140 + r.next() * 120, hh = 80 + r.next() * 40, x = 40 + r.next() * (W - w - 80), y = 560 + r.next() * 260;
+    if (near(x + w / 2, y + hh / 2, 110)) continue;
+    const f = s('g', { transform: `rotate(${r.range(-14, 14)} ${x + w / 2} ${y + hh / 2})` }, s('rect', { x, y, width: w, height: hh, rx: 6, fill: '#2a2a22', stroke: '#3a3a2c' }));
+    for (let l = 1; l < 6; l++) f.append(s('line', { x1: x + 6, y1: y + (hh / 6) * l, x2: x + w - 6, y2: y + (hh / 6) * l, stroke: '#3c3c2e', 'stroke-width': 2 }));
+    g.append(f);
   }
-  // the river, from the south-west, under the north bridge, past the hill
-  const river = 'M -20 560 C 150 500, 300 470, 420 420 S 560 330, 520 220 S 430 60, 400 -20';
-  g.append(s('path', { d: river, fill: 'none', stroke: '#16304a', 'stroke-width': 50, 'stroke-linecap': 'round' }),
-    s('path', { d: river, fill: 'none', stroke: '#2a5a80', 'stroke-width': 30, 'stroke-linecap': 'round' }),
-    s('path', { d: river, fill: 'none', stroke: '#7ab8e0', 'stroke-width': 2, 'stroke-dasharray': '14 18', opacity: 0.45 }));
+  // woods on the far side
+  for (let k = 0; k < 110; k++) {
+    const x = r.next() * W, y = 150 + r.next() * 330;
+    if (!near(x, y, 60)) tree(x, y);
+  }
+  // the river, under the north bridge
+  const br = places.find(p => p.event === 'bridge');
+  if (br) {
+    const river = `M -20 ${br.y + 150} C ${br.x - 260} ${br.y + 90}, ${br.x - 110} ${br.y + 30}, ${br.x} ${br.y} S ${br.x + 380} ${br.y - 120}, ${W + 20} ${br.y - 60}`;
+    g.append(s('path', { d: river, fill: 'none', stroke: '#16304a', 'stroke-width': 50, 'stroke-linecap': 'round' }),
+      s('path', { d: river, fill: 'none', stroke: '#2a5a80', 'stroke-width': 30, 'stroke-linecap': 'round' }),
+      s('path', { d: river, fill: 'none', stroke: '#7ab8e0', 'stroke-width': 2, 'stroke-dasharray': '14 18', opacity: 0.45 }));
+  }
+  for (const p of places) {
+    if (p.set === 'village') around(p, 7, house);
+    else if (p.set === 'forest') around(p, 12, tree);
+    else if (p.set === 'shrine') around(p, 4, (x, y) => g.append(s('rect', { x: x - 4, y: y - 14, width: 8, height: 18, rx: 2, fill: '#4a4658', stroke: '#1a1822' })));
+    else if (p.set === 'hill') for (const [rx, ry, o] of [[270, 100, 0.25], [195, 72, 0.3], [125, 46, 0.35]]) g.append(s('ellipse', { cx: p.x, cy: p.y + 20, rx, ry, fill: '#241e2e', 'fill-opacity': 0.5, stroke: '#7a6a8a', 'stroke-opacity': o, 'stroke-width': 2 }));
+  }
   return g;
 }
 
@@ -78,20 +92,18 @@ export function placeMapScreen(run: Run): Promise<number> {
   const options = exits(run);
   const open = new Set(options.map(o => o.to.id));
   const seen = new Set([...run.path, ...open]);
-  const shown = (id: number) => seen.has(id) || story.known.includes(id);
+  const known = new Set(revealed(run).map(p => p.id));
+  const shown = (id: number) => seen.has(id) || known.has(id);
+  const PLACES = run.places!, ROADS = run.roads!;
   const walked = (r: Road) => run.path.some((id, i) => i > 0 && ((run.path[i - 1] === r.from && id === r.to) || (run.path[i - 1] === r.to && id === r.from)));
   const pt = (id: number) => PLACES[id];
 
   return new Promise(resolve => {
-    const map = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'pmap-svg' }, terrain());
-    // earlier attempts: faint trails of the routes they took
-    for (const t of story.trails.slice(-3)) {
-      map.append(s('polyline', { points: t.map(id => `${pt(id).x},${pt(id).y}`).join(' '), class: 'pm-ghost' }));
-    }
+    const map = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'pmap-svg' }, terrain(run));
     // roads (they fade into the fog where the party hasn't been)
     for (const r of ROADS) {
       if (!shown(r.from) && !shown(r.to)) continue;
-      const c = curve(r);
+      const c = curve(PLACES, r);
       const isOpen = options.some(o => o.road === r);
       map.append(s('path', { d: c.d, class: 'pm-road-case' }), s('path', { d: c.d, class: 'pm-road' + (walked(r) ? ' walked' : isOpen ? ' open' : '') }));
     }
@@ -106,14 +118,8 @@ export function placeMapScreen(run: Run): Promise<number> {
     // ambushes waiting on roads not yet walked
     for (const r of ROADS) {
       if (!r.ambush || walked(r) || !shown(r.from) || !(open.has(r.to) || shown(r.to))) continue;
-      const m = curve(r).mid;
+      const m = curve(PLACES, r).mid;
       layer.append(h('div.pmap-ambush', { style: `left:${m.x}px; top:${m.y}px`, 'data-tip': `<b>${r.ambush}</b><br>A fight on this road.` }, img(uiIconUrl('battle'))));
-    }
-    // where earlier attempts ended
-    for (const f of story.falls.slice(-3)) {
-      const p = f.from === f.to ? pt(f.to) : curve(ROADS.find(r => r.from === f.from && r.to === f.to) ?? { from: f.from, to: f.to }).mid;
-      // (set beside any ambush marker on the same road)
-      layer.append(h('div.pmap-fall', { style: `left:${p.x + 26}px; top:${p.y - 22}px`, 'data-tip': `<b>Attempt ${f.attempt}</b><br>The party fell here.` }, img(uiIconUrl('crystal'))));
     }
     // the places
     const token = h('div.pmap-party', ...run.heroes.map(hr => img(portraitUrl(hr.id))));
@@ -144,9 +150,8 @@ export function placeMapScreen(run: Run): Promise<number> {
       memoriesPanel(story),
       h('div.pmap-key',
         h('div', h('span.pmap-key-road'), 'Your route'),
-        h('div', h('span.pmap-key-ghost'), 'An earlier attempt'),
         h('div', img(uiIconUrl('battle')), 'A fight on the road'),
-        h('div', img(uiIconUrl('crystal')), 'Where the party fell')),
+      ),
       h('div.pmap-frame', map as unknown as HTMLElement, layer)));
   });
 }

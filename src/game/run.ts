@@ -1,6 +1,6 @@
 // Run-level state: party, deck, map, economy, progression, persistence. Pure (no DOM besides localStorage).
 import type { Battle } from './battle';
-import type { Flag, Story } from './chapter1';
+import type { Flag, Place, Road, Story } from './chapter1';
 import { CARDS, REWARD_POOL, STARTER_DECK, canUpgrade } from './cards';
 import { ENCOUNTERS } from './enemies';
 import { HEROES, xpToNext } from './heroes';
@@ -36,6 +36,9 @@ export interface Run {
   /** story mode: the chapter's progress across attempts, and what's been done this attempt */
   story?: Story;
   flags?: Flag[];
+  /** story mode: this attempt's map */
+  places?: Place[];
+  roads?: Road[];
 }
 
 export const ROWS = 15; // + boss row
@@ -287,82 +290,7 @@ export function damageHero(run: Run, id: HeroId, amount: number) {
 }
 
 // ───────────────────────── events ─────────────────────────
-export type EventFollowUp = { kind: 'upgrade' | 'remove' } | { kind: 'cards'; cards: string[] } | { kind: 'acc'; acc: AccId } | { kind: 'levels'; ups: number };
-
-export interface EventOption { label: string; desc: string; disabled?: string; go: (run: Run) => { text: string; follow?: EventFollowUp } }
-export interface EventDef { id: string; title: string; sprite: 'crystal' | 'book' | 'traveler' | 'dummy' | 'merchant' | 'fountain'; text: string; options: (run: Run) => EventOption[] }
-
-const leave: EventOption = { label: 'Leave', desc: 'Continue on your way.', go: () => ({ text: 'You press onward, deeper into the spire.' }) };
-
-export const EVENTS: EventDef[] = [
-  { id: 'shrine', title: 'The Crystal Shrine', sprite: 'crystal',
-    text: 'A pillar of living crystal hums in the dark. Its light feels warm on your skin, yet something within it watches.',
-    options: () => [
-      { label: 'Pray', desc: 'All heroes heal 25% of max HP.', go: run => { run.heroes.forEach(h => healHero(run, h.id, Math.round(h.maxHp * 0.25))); return { text: 'A gentle radiance washes over the party. Wounds close; spirits lift.' }; } },
-      { label: 'Attune', desc: 'Gain a random Accessory. All heroes lose 6 HP.', go: run => {
-        run.heroes.forEach(h => damageHero(run, h.id, 6));
-        const acc = withRng(run, r => rollAcc(run, r));
-        if (!acc) return { text: 'The crystal flares and dims. Nothing remains to give.' };
-        addAcc(run, acc);
-        return { text: 'Shards bite into your palms as the crystal yields a gift.', follow: { kind: 'acc', acc } };
-      } },
-      leave,
-    ] },
-  { id: 'library', title: 'The Drowned Library', sprite: 'book',
-    text: 'Half-sunken shelves line a flooded hall. A few tomes, sealed in wax, have survived the centuries.',
-    options: () => [
-      { label: 'Read', desc: 'Choose 1 of 3 powerful cards.', go: run => ({ text: 'Forgotten techniques leap from the page.', follow: { kind: 'cards', cards: withRng(run, r => rollCards(r, 3, { uncommon: 50, rare: 50 })) } }) },
-      { label: 'Study', desc: 'Upgrade 2 random cards.', go: run => {
-        const picks = withRng(run, r => r.shuffle(upgradable(run)).slice(0, 2));
-        picks.forEach(c => upgradeCard(run, c.uid));
-        return { text: picks.length ? `Hours of study pay off: ${picks.map(c => CARDS[c.id].name).join(' and ')} upgraded.` : 'There is nothing left for you to learn here.' };
-      } },
-      leave,
-    ] },
-  { id: 'traveler', title: 'The Wounded Traveler', sprite: 'traveler',
-    text: 'A merchant lies against a broken column, clutching a heavy purse. "Please... the monsters took my escort..."',
-    options: run => [
-      { label: 'Tend his wounds', desc: 'Seren loses 8 HP. Gain 60 Shards and a Potion.', disabled: run.heroes.find(h => h.id === 'wmage')!.hp <= 8 ? 'Seren is too weak' : undefined,
-        go: run => { damageHero(run, 'wmage', 8); run.shards += 60; addItem(run, 'potion'); return { text: 'He presses coins into Seren\'s hands. "May the light keep you."' }; } },
-      { label: 'Take the purse', desc: 'Gain 110 Shards. Add 2 Daze to your deck.', go: run => { run.shards += 110; run.deck.push(newCard(run, 'daze'), newCard(run, 'daze')); return { text: 'His eyes follow you as you walk away. The gold feels heavy.' }; } },
-      leave,
-    ] },
-  { id: 'training', title: 'The Old Training Yard', sprite: 'dummy',
-    text: 'Straw dummies still stand in rows, hacked and scorched by knights long dead. A worn plaque reads: "Strength through toil."',
-    options: () => [
-      { label: 'Spar', desc: 'Aldric loses 10 HP. Gain 40 XP.', go: run => { damageHero(run, 'knight', 10); const ups = gainXp(run, 40); return { text: 'Steel rings until your arms ache. You feel sharper.', follow: ups ? { kind: 'levels', ups } : undefined }; } },
-      { label: 'Meditate', desc: 'Gain 20 XP.', go: run => { const ups = gainXp(run, 20); return { text: 'In the stillness, the party reflects on the road so far.', follow: ups ? { kind: 'levels', ups } : undefined }; } },
-      leave,
-    ] },
-  { id: 'merchant', title: 'Pom the Wanderer', sprite: 'merchant',
-    text: 'A tiny, fluffy merchant with an enormous pack bows theatrically. "Kupo—er, greetings! Pom trades in lighter burdens!"',
-    options: run => [
-      { label: 'Lighten your load', desc: 'Remove a card from your deck for free.', go: () => ({ text: '"A wise traveler carries only what matters!"', follow: { kind: 'remove' } }) },
-      { label: 'Mystery bundle (50 Shards)', desc: 'Gain a random Item and a 30% chance at an Accessory.', disabled: run.shards < 50 ? 'Not enough Shards' : run.items.every(i => i) ? 'Item pouch is full' : undefined,
-        go: run => {
-          run.shards -= 50;
-          const { item, acc } = withRng(run, r => ({ item: r.pick(ITEM_IDS), acc: r.chance(0.3) ? rollAcc(run, r) : null }));
-          addItem(run, item);
-          if (acc) { addAcc(run, acc); return { text: `Inside: a ${ITEMS[item].name}... and something shiny!`, follow: { kind: 'acc', acc } }; }
-          return { text: `Inside: a ${ITEMS[item].name}. "Pleasure doing business!"` };
-        } },
-      leave,
-    ] },
-  { id: 'fountain', title: 'Fountain of Aether', sprite: 'fountain',
-    text: 'Pale blue water spills from a cracked basin, glowing faintly. The air tastes of lightning.',
-    options: run => [
-      { label: 'Drink', desc: 'Upgrade a card.', go: () => ({ text: 'Power courses through your veins.', follow: { kind: 'upgrade' } }) },
-      { label: 'Bottle it', desc: 'Gain an Ether.', disabled: run.items.every(i => i) ? 'Item pouch is full' : undefined, go: run => { addItem(run, 'ether'); return { text: 'You carefully seal the shimmering water in a flask.' }; } },
-      leave,
-    ] },
-];
-
-export function pickEvent(run: Run): EventDef {
-  const unseen = EVENTS.filter(e => !run.seenEvents.includes(e.id));
-  const ev = withRng(run, r => r.pick(unseen.length ? unseen : EVENTS));
-  run.seenEvents.push(ev.id);
-  return ev;
-}
+export type EventFollowUp = { kind: 'upgrade' | 'remove' } | { kind: 'cards'; cards: string[] } | { kind: 'acc'; acc: AccId };
 
 // ───────────────────────── persistence ─────────────────────────
 export function save(run: Run) { localStorage.setItem(SAVE_KEY, JSON.stringify(run)); }

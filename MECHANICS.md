@@ -62,17 +62,17 @@ Shards are the currency (the war is fought over them).
 - Three item slots (Potion, Ether, Phoenix Down, Elixir, Bomb Fragment, Arctic Wind, Swift Tonic). Most are battle-only.
 - Accessories are permanent for the attempt. Full lists and texts: `src/game/loot.ts`.
 
-## The chapter map: a place that remembers
+## The chapter map: a new place every attempt
 
-A chapter map is a real place, not a ladder of rows.
+A chapter map is a real place, not a ladder of rows, and it is **drawn anew after every fall**.
 
 - **Places joined by roads.** The party token walks along roads.
 - **Fights happen on roads** (ambushes, marked with red swords), only the first time a road is walked.
-- **Places** hold events, the market, rest (an inn), elite fights and the goal. Their content happens the first time you arrive.
+- **Places** hold events, the market, rest (an inn), treasure, elite fights and the goal. Their content happens the first time you arrive.
+- **Events** play as a short scene in the place's own set: the party on stage, a few lines, then one choice (every event has *Move on*). What a choice costs and gives is written on it.
 - **Side trips** (dead ends) are free to walk back from; other roads only lead onward.
-- **Fog:** you see where you are, where you've been this attempt and the next places along the roads. Everything else is dark.
+- **Fog:** you see where you are, where you've been this attempt and the next places along the roads. Everything else is dark, except what Memories reveal.
 - **Each place has its own 3D set** (the shrine, the village, the forest road, the north bridge, the hill). A fight on a road uses the set of the place you're heading to, and the map's backdrop is the set where the party is.
-- **The map remembers across attempts:** places reached in earlier attempts stay visible (in italic blue); Memories can reveal places you haven't reached; the routes of the last three attempts show as faint dotted trails; a crystal marks where each of the last three attempts fell.
 
 ## Memories
 
@@ -93,32 +93,34 @@ Gained one per fall, in a fixed order per chapter. Three kinds so far:
 2. **The shrine steps:** Aldric alone against the Ashen Knight (999 HP, unbreakable). Two strokes of 20, then the Third Stroke for 99: he falls, as the story requires. This is attempt 1.
 3. Dawn: the first Memory, and the escape begins (attempt 2).
 
-**The map:**
+**The map** (generated each attempt, `genMap` in `chapter1.ts`):
 
-| Place | What's there | Reached by |
-|---|---|---|
-| The Anchorlight | Start | — |
-| Shrine Library | Event: choose 1 of 3 cards, or upgrade a card (side trip) | Anchorlight, free |
-| Village Square | Crossroads | Anchorlight, ambush |
-| The Mill | Event; with the *well* Memory, save Nell (side trip) | Square, ambush |
-| Emberfall Market | Shop (side trip) | Square, free |
-| The North Bridge | Event; with the *bridge* Memory, bring it down | Square, ambush |
-| Wayside Shrine | Event: heal, or an accessory for HP (side trip) | Bridge, ambush |
-| Forest Edge | Crossroads | Square, ambush |
-| Woodcutter's Camp | Elite: Kaldran Captain + Soldier (side trip) | Forest Edge, free |
-| Shepherd's Hut | Rest (inn) | Forest Edge, ambush |
-| The Hill | The Ashen Knight | Bridge or Hut, ambush |
+- **The Anchorlight** at the bottom, **the Hill** at the top, and five rows of places between them: 2–3, 3–4, 3–4, 3, then 2–3. Each place has roads to the places above it in the next row, so roads never cross; now and then one more. Every place in the last row has a road to the Hill.
+- **Two or three side trips**: dead ends beside a place in rows 1–4, never ambushed.
+- **Always somewhere:** the Mill (rows 1–2), the North Bridge (rows 3–4), and a rest in the last row.
+- **The rest by chance:** events 45, crossroads 20 (not side trips), elites 12 (row 2 up, at most 2), shops 10 (at most 2), treasure 8 (at most 1), rests 6 (row 3 up, at most 2). Each event and each name turns up at most once per map.
+- **Ambushes:** each road onward has a 50% chance; the last road to the Hill always has one.
+- Rows 3 and up are *far*: fights there are harder and the light turns to dusk. Near places use the village set, far ones the forest; events use their own (library, Wayside Shrine, chapel: the shrine; Mill, Watchtower: the village; wagon, deserter: the forest; the North Bridge: the bridge).
 
-Sets: the Anchorlight, the library and the Wayside Shrine use the shrine; the square, the mill and the market the village; Forest Edge, the camp and the hut the forest road; the North Bridge the bridge; the Hill the hill.
+**Events:**
 
-Two ways out: the **North Bridge** road (fewer fights, no rest) or the **forest** road (a rest stop and the optional elite). The Bridge, the Wayside Shrine and everything past the Square toward the forest are *far*: fights there are harder and the light turns to dusk.
+| Event | Choices |
+|---|---|
+| The Mill (always) | *Search the mill*: 20 Shards. With the *well* Memory, *Look in the well*: save Nell (40 Shards, a Potion, an Ether and a random accessory); without it, *Call out* (nothing) |
+| The North Bridge (always) | *Rest by the water*: every hero heals 15%. With the *bridge* Memory, *Bring it down*: Aldric loses 8 HP, and the two Soldiers won't be on the hill |
+| Shrine Library | *Read*: choose 1 of 3 cards. *Study*: upgrade a card |
+| Wayside Shrine | *Pray*: every hero heals 25%. *Attune*: a random accessory, every hero loses 6 HP |
+| The Watchtower | *Climb it*: see the whole map for this attempt. *Take the signal oil*: a Bomb Fragment |
+| The Overturned Wagon | *Right the wagon*: Aldric loses 6 HP, a random accessory. *Take what fell*: 30 Shards and a Potion |
+| A Kaldran Deserter | *Let him go*: the next ambush doesn't happen. *Take his purse*: 35 Shards |
+| The Pilgrims' Chapel | *Confess*: remove a card. *Light a candle*: every hero heals 20% |
 
 **Ambushes** draw from: near the village, one Soldier, two Gloom Bats or one Ember Wisp; further out, pairs like two Soldiers, Soldier + Wisp, Soldier + Bat, two Wisps or three Bats.
 
 **Memories, in order:**
 1. *The Ashen Knight always guards his left.* (Foresight) His weaknesses (Holy, Thunder) are known from the start and his shield is 3 instead of 8.
-2. *The soldiers cross the north bridge at dusk.* (Pathfinding) Reveals the North Bridge; there you can bring it down (Aldric loses 8 HP), and the two Soldiers won't be on the hill.
-3. *The miller's daughter hides in the well.* (People) Reveals the Mill; there you can save Nell: 40 Shards, a Potion, an Ether and a random accessory.
+2. *The soldiers cross the north bridge at dusk.* (Pathfinding) Shows where the North Bridge is on every map; there you can bring it down (Aldric loses 8 HP), and the two Soldiers won't be on the hill.
+3. *The miller's daughter hides in the well.* (People) Shows where the Mill is on every map; there you can save Nell: 40 Shards, a Potion, an Ether and a random accessory.
 
 **Chapter 1 enemies:**
 
@@ -130,13 +132,13 @@ Two ways out: the **North Bridge** road (fewer fights, no rest) or the **forest*
 
 **The hill:** the Ashen Knight, plus two Soldiers unless the bridge is down. The battle is won when he's down to **half HP**: he hesitates over Lyra and the party escapes. Then the first Anchor is set and the chapter ends.
 
-**Balance** (`SIM=1 SIM_N=100 npx vitest run src/game/sim.test.ts -t "chapter 1" --disableConsoleIntercept`; a greedy bot takes the forest route with the Mill):
+**Balance** (`SIM=1 SIM_N=300 npx vitest run src/game/sim.test.ts -t "chapter 1" --disableConsoleIntercept`; a bot takes a random route on each map, skips elites and events, rests at an inn when hurt):
 
 | Memories | Reach the hill | Escape |
 |---|---|---|
-| None | 99% | 39% |
-| The Knight's guard (every real attempt has this) | 99% | 53% |
-| + the bridge | 99% | 99% |
+| None | 87% | 25% |
+| The Knight's guard (every real attempt has this) | 87% | 41% |
+| + the bridge | 87% | 86% |
 
 ---
 
@@ -147,5 +149,7 @@ Two ways out: the **North Bridge** road (fewer fights, no rest) or the **forest*
 - **Limit Breaks** → removed entirely.
 - **Gold** → Crystal Shards earned by Breaking, so fights are about finding weaknesses.
 - **A 15-floor branching ladder map (the Spire)** → a place map with fog and memory. The Spire's generator still exists in `run.ts` for the old balance simulator only.
+- **Events as a window with card art** over a blurred backdrop, and the Spire's generic event pool → each place's event is a scene in its own set, written for Emberfall.
+- **One fixed Emberfall map** (11 places, the same roads every attempt) that remembered: earlier routes as ghost trails, crystals where the party fell, places reached stayed visible → a new map every attempt. The fixed map made every run the same after the second.
 - **A day clock** (every stop cost hours, dusk as a deadline) → removed: it added a second kind of time the story doesn't have.
 - **A turn-timeline JRPG combat prototype** (Foresight, a branching "Split" of the battle) → deleted: too complicated compared with the card battles.

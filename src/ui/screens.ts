@@ -3,14 +3,16 @@ import { canUpgrade, cardDef } from '../game/cards';
 import { HEROES, xpToNext } from '../game/heroes';
 import { ACCESSORIES, ITEMS, type AccId, type ItemId } from '../game/loot';
 import {
-  addAcc, addItem, battleRewards, gainXp, healHero, levelUpChoices, newCard, pickEvent, removeCard,
-  restHeal, shopStock, treasure, upgradeCard, type EventDef, type EventFollowUp, type NodeType, type Run,
+  addAcc, addItem, battleRewards, gainXp, healHero, levelUpChoices, newCard, removeCard,
+  restHeal, shopStock, treasure, upgradeCard, type EventFollowUp, type NodeType, type Run,
 } from '../game/run';
-import type { CardArt, CardInst, HeroId } from '../game/types';
+import type { CardInst, HeroId } from '../game/types';
 import { app, btn, confirmBtn, modal, mount, toast } from './app';
 import { cardEl } from './card';
 import { h, img } from './dom';
 import { refreshTopBar, topBar } from './hud';
+import { talk } from './story';
+import { storySet, storyTheme, type PlaceEvent } from '../game/chapter1';
 
 // ───────────────────────── title ─────────────────────────
 export function titleScreen(hasSave: boolean): Promise<'new' | 'continue' | 'skip' | 'dev'> {
@@ -288,42 +290,26 @@ export function shopScreen(run: Run): Promise<void> {
 }
 
 // ───────────────────────── events ─────────────────────────
-const EVENT_ART: Record<string, CardArt> = { crystal: 'prism', book: 'focus', traveler: 'cure', dummy: 'warcry', merchant: 'miracle', fountain: 'purify' };
-
-export function eventScreen(run: Run, ev: EventDef = pickEvent(run)): Promise<void> {
-  return new Promise(resolve => {
-    const topSlot = h('div', topBar(run));
-    const text = h('p.window-text.event-text', ev.text);
-    const opts = h('div.event-options');
-    const renderOptions = () => opts.replaceChildren(...ev.options(run).map(o => {
-      const b = btn(h('div.event-opt', h('b', `[${o.label}]`), h('span', o.desc), o.disabled ? h('em', ` — ${o.disabled}`) : null), async () => {
-        const res = o.go(run);
-        app.audio.sfx('select');
-        text.textContent = res.text;
-        opts.replaceChildren();
-        topSlot.replaceChildren(topBar(run));
-        // level-ups are full screens that replace this one, so the event ends with them
-        if (res.follow?.kind === 'levels') { await followUp(run, res.follow); resolve(); return; }
-        if (res.follow) await followUp(run, res.follow);
-        topSlot.replaceChildren(topBar(run));
-        opts.append(btn('Continue', () => resolve(), 'big-btn'));
-      }, 'event-btn');
-      if (o.disabled) b.setAttribute('disabled', '');
-      return b;
-    }));
-    renderOptions();
-    mount(h('div.event-screen', topSlot,
-      h('div.window.event-window',
-        h('div.event-art', img(cardArtUrl(EVENT_ART[ev.sprite]))),
-        h('div.event-body', h('h2.window-title', ev.title), text, opts))));
-  });
+/** An event place, played as a short scene in the place's own set: the party on stage, a few lines, a choice. */
+export async function placeEvent(run: Run, ev: PlaceEvent): Promise<void> {
+  app.stage.setMode('battle', storyTheme(run), storySet(run));
+  app.stage.setUnits([]);
+  app.stage.setUnits(run.heroes.map(x => ({ id: x.id, sprite: x.id, side: 'hero' as const })));
+  app.audio.music('inn');
+  const t = talk({ title: ev.name, top: topBar(run) });
+  await t.say(ev.intro(run));
+  const res = (await t.choose(ev.options(run))).go(run);
+  refreshTopBar(run);
+  if (res.follow?.kind === 'acc') await followUp(run, res.follow);
+  await t.say(res.lines);
+  t.close();
+  if (res.follow && res.follow.kind !== 'acc') await followUp(run, res.follow);
 }
 
 async function followUp(run: Run, f: EventFollowUp) {
   if (f.kind === 'upgrade' || f.kind === 'remove') await pickCard(run, f.kind);
   else if (f.kind === 'cards') await cardChoice(run, f.cards, 'Choose a card');
   else if (f.kind === 'acc') { app.audio.sfx('chest'); toast(`Obtained ${ACCESSORIES[f.acc].name}!`); }
-  else if (f.kind === 'levels') for (let i = 0; i < f.ups; i++) await levelUpScreen(run, run.level - f.ups + i + 1);
 }
 
 // ───────────────────────── settings / end ─────────────────────────
